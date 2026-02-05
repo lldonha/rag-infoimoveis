@@ -372,7 +372,8 @@ async def scrape_property_safe(
     url: str,
     rate_limiter: SmartRateLimiter,
     use_cookies: bool = True,
-    save_to_db: bool = True
+    save_to_db: bool = True,
+    use_stealth: bool = True
 ) -> Optional[Dict]:
     """
     Scrape de um imóvel com TODAS as proteções
@@ -383,6 +384,7 @@ async def scrape_property_safe(
         rate_limiter: Instância do SmartRateLimiter
         use_cookies: Se True, tenta usar cookies salvos
         save_to_db: Se True, salva no PostgreSQL
+        use_stealth: Se True, usa playwright-stealth (recomendado)
 
     Returns:
         Dict com dados do imóvel ou None se erro
@@ -404,34 +406,52 @@ async def scrape_property_safe(
     print(f"🎭 Fingerprint: {fingerprint['viewport']['width']}x{fingerprint['viewport']['height']}")
 
     try:
-        # 4. Criar browser com fingerprint
-        browser = await playwright.chromium.launch(
-            headless=False,  # CRÍTICO: headed mode
-            args=[
-                '--disable-blink-features=AutomationControlled',
-                '--disable-dev-shm-usage',
-                '--no-sandbox'
-            ]
-        )
+        # 4. Criar browser (stealth ou padrão)
+        if use_stealth:
+            print("🔒 Usando modo STEALTH (playwright-stealth)")
+            from scraper_stealth import create_stealth_browser
 
-        context = await browser.new_context(
-            user_agent=fingerprint['user_agent'],
-            viewport=fingerprint['viewport'],
-            locale=fingerprint['locale'],
-            timezone_id=fingerprint['timezone']
-        )
+            playwright_stealth, browser, context, page = await create_stealth_browser(
+                headless=True,
+                viewport_width=fingerprint['viewport']['width'],
+                viewport_height=fingerprint['viewport']['height']
+            )
 
-        # Script anti-detecção
-        await context.add_init_script(get_anti_detection_script())
+            # Aplicar cookies no context stealth
+            cookies = None
+            if use_cookies:
+                cookies = load_cookies()
+                if cookies:
+                    await context.add_cookies(cookies)
+        else:
+            print("⚠️  Usando modo PADRÃO (sem stealth)")
+            browser = await playwright.chromium.launch(
+                headless=False,  # CRÍTICO: headed mode
+                args=[
+                    '--disable-blink-features=AutomationControlled',
+                    '--disable-dev-shm-usage',
+                    '--no-sandbox'
+                ]
+            )
 
-        # 5. Aplicar cookies se disponível
-        cookies = None
-        if use_cookies:
-            cookies = load_cookies()
-            if cookies:
-                apply_cookies(context, cookies)
+            context = await browser.new_context(
+                user_agent=fingerprint['user_agent'],
+                viewport=fingerprint['viewport'],
+                locale=fingerprint['locale'],
+                timezone_id=fingerprint['timezone']
+            )
 
-        page = await context.new_page()
+            # Script anti-detecção
+            await context.add_init_script(get_anti_detection_script())
+
+            # 5. Aplicar cookies se disponível
+            cookies = None
+            if use_cookies:
+                cookies = load_cookies()
+                if cookies:
+                    apply_cookies(context, cookies)
+
+            page = await context.new_page()
 
         # 6. Acessar página
         await page.goto(url, wait_until="domcontentloaded", timeout=30000)
@@ -483,7 +503,8 @@ async def scrape_property_safe(
 async def scrape_multiple_properties(
     urls: List[str],
     max_per_session: int = 50,
-    save_to_db: bool = True
+    save_to_db: bool = True,
+    use_stealth: bool = True
 ) -> Dict:
     """
     Scrape múltiplos imóveis com proteções
@@ -492,6 +513,7 @@ async def scrape_multiple_properties(
         urls: Lista de URLs
         max_per_session: Máximo por sessão (padrão: 50/hora)
         save_to_db: Salvar no banco
+        use_stealth: Se True, usa playwright-stealth (recomendado)
 
     Returns:
         Dict com estatísticas
@@ -521,7 +543,8 @@ async def scrape_multiple_properties(
             result = await scrape_property_safe(
                 p, url, rate_limiter,
                 use_cookies=True,
-                save_to_db=save_to_db
+                save_to_db=save_to_db,
+                use_stealth=use_stealth
             )
 
             if result:
