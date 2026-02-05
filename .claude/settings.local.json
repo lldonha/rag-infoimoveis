@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-Process)",
+      "Bash(Where-Object {$_ProcessName -like \"*python*\"})",
+      "Bash(Select-Object ProcessName, Id, StartTime)",
+      "Bash(Format-Table -AutoSize)"
+    ]
+  }
+}
