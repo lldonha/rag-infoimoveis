@@ -12,8 +12,8 @@ Sistema RAG (Retrieval-Augmented Generation) para avaliação de imóveis em Cam
 | 0.5 PostgreSQL + pgvector | ✅ Concluído | 100% |
 | 0.6 Pipeline Embeddings | ✅ Concluído | 100% |
 | 0.7 Sistema RAG | ✅ Concluído | 100% |
-| 0.8 Scraping Seguro | 🔜 Próximo | 0% |
-| 0.9 API REST | 📋 Planejado | 0% |
+| 0.8 Scraping Produção | ✅ Concluído | 100% |
+| 0.9 API REST | 🔜 Próximo | 0% |
 | 1.0 Integração n8n | 📋 Planejado | 0% |
 
 ---
@@ -30,7 +30,24 @@ docker-compose up -d postgres
 docker ps | grep postgres
 ```
 
-### 2. Obter API Keys (FREE)
+### 2. Popular com Dados Reais (NOVO!)
+
+```bash
+# Scraping de produção com proteções anti-bloqueio
+python tools/scraper_production.py
+
+# Ou workflow completo (discovery + scraping)
+python tools/scrape_workflow.py --mode full --max-properties 50
+```
+
+**Ver dashboard:**
+```bash
+python tools/metrics_dashboard.py
+```
+
+📖 **Guia completo:** [GUIA_RAPIDO_SCRAPING.md](GUIA_RAPIDO_SCRAPING.md)
+
+### 3. Obter API Keys (FREE) - Opcional
 
 Siga as instruções em [.env.INSTRUCOES](.env.INSTRUCOES):
 
@@ -45,7 +62,7 @@ GROQ_API_KEY=sua_key_aqui
 MISTRAL_API_KEY=sua_key_aqui
 ```
 
-### 3. Testar Pipeline
+### 4. Testar Pipeline RAG (Opcional)
 
 ```bash
 # Teste PostgreSQL + pgvector
@@ -64,13 +81,21 @@ python tools/test_07_rag_system.py
 
 ```
 rag_infoimoeveis/
-├── tools/                      # Scripts Python de validação
-│   ├── test_01c_cloudflare_bypass.py   # Bypass Cloudflare
-│   ├── test_03_parse.py               # Parser de imóveis
-│   ├── test_05_postgres.py            # ✅ Teste PostgreSQL
-│   └── test_06_embeddings.py          # 🔄 Teste embeddings
+├── tools/                      # Scripts Python
+│   ├── scraper_production.py          # ✅ Scraper de produção
+│   ├── scrape_workflow.py             # ✅ Orquestrador completo
+│   ├── property_saver.py              # ✅ Inserção PostgreSQL
+│   ├── metrics_dashboard.py           # ✅ Dashboard de métricas
+│   ├── rate_limiter.py                # ✅ Controle de taxa
+│   ├── cookie_manager.py              # ✅ Gestão de cookies
+│   ├── fingerprint_rotator.py         # ✅ Rotação de identidade
+│   ├── human_behavior.py              # ✅ Simulação humana
+│   ├── test_05_pgvector.py            # ✅ Teste PostgreSQL
+│   ├── test_06_embeddings.py          # ✅ Teste embeddings
+│   └── test_07_rag_system.py          # ✅ Teste RAG completo
 │
 ├── workflows/                  # SOPs e documentação
+│   ├── scraping_producao.md   # ✅ Workflow de produção
 │   ├── scraping.md            # Documentação scraping
 │   └── anti-bloqueio.md       # 🔥 CRÍTICO: Plano anti-bloqueio
 │
@@ -133,21 +158,22 @@ rag_infoimoeveis/
 
 ---
 
-## 🔐 Anti-Bloqueio (CRÍTICO)
+## 🔐 Sistema de Scraping em Produção
 
-**Antes de iniciar scraping em larga escala, ler:**
-👉 [workflows/anti-bloqueio.md](workflows/anti-bloqueio.md)
+**Sistema completo com 7 camadas de proteção anti-bloqueio:**
 
-**Estratégia em 7 camadas:**
-1. ✅ Browser real (headed mode)
-2. ✅ Rate limiting (5-12s delay, 50/hora, 400/dia)
-3. ✅ Janelas de tempo (madrugada, almoço, noite)
-4. ✅ Rotação de fingerprint (UA, viewport, timezone)
-5. ✅ Gestão de cookies (persistência 6h)
-6. ✅ Comportamento humano (scroll, mouse, pausas)
-7. ✅ Detecção de bloqueio (auto-recovery)
+1. ✅ **Rate Limiting:** 5-12s delay, 50/hora, 400/dia
+2. ✅ **Janelas Seguras:** Madrugada (03-06h), Almoço (13-15h), Noite (22-24h)
+3. ✅ **Browser Real:** Headed mode (Cloudflare não detecta)
+4. ✅ **Cookies Persistentes:** 6h TTL, renovação automática
+5. ✅ **Fingerprint Rotation:** UA, viewport, timezone aleatórios
+6. ✅ **Comportamento Humano:** Scroll, mouse, pausas aleatórias
+7. ✅ **Auto-Recovery:** Detecção de bloqueio + pausa automática
 
-**Não seguir = IP bloqueado**
+**Guias:**
+- 📖 [GUIA_RAPIDO_SCRAPING.md](GUIA_RAPIDO_SCRAPING.md) - Quick start
+- 📖 [workflows/scraping_producao.md](workflows/scraping_producao.md) - Documentação completa
+- 📖 [workflows/anti-bloqueio.md](workflows/anti-bloqueio.md) - Estratégias anti-bloqueio
 
 ---
 
@@ -266,9 +292,10 @@ python tools/test_07_rag.py
 1. ✅ ~~Obter API keys (Cohere, Groq, Mistral)~~
 2. ✅ ~~Testar pipeline de embeddings~~
 3. ✅ ~~Implementar sistema RAG completo~~
-4. 🔜 **PRÓXIMO:** Implementar scraper de imóveis reais
-5. 📋 Criar API REST para consultas
-6. 📋 Migrar para workflow n8n (automação)
+4. ✅ ~~Implementar scraper de produção com proteções~~
+5. 🔜 **PRÓXIMO:** Popular banco com 1000+ imóveis reais
+6. 📋 Criar API REST para consultas
+7. 📋 Migrar para workflow n8n (automação)
 
 Ver detalhes em [PROXIMOS_PASSOS.md](PROXIMOS_PASSOS.md)
 
@@ -283,6 +310,34 @@ Ver detalhes em [PROXIMOS_PASSOS.md](PROXIMOS_PASSOS.md)
 
 ---
 
+---
+
+## 🆕 Novidades da v0.8.0
+
+**Sistema de Scraping em Produção:**
+
+✨ **Novos Scripts:**
+- `scraper_production.py` - Scraper com todas as proteções
+- `scrape_workflow.py` - Orquestrador completo (discovery → scraping)
+- `property_saver.py` - Inserção automática no PostgreSQL
+- `metrics_dashboard.py` - Dashboard de monitoramento
+
+🛡️ **Proteções Anti-Bloqueio:**
+- Rate limiter inteligente (50/hora, 400/dia)
+- Cookies persistentes (6h TTL)
+- Fingerprint rotation (UA, viewport, timezone)
+- Comportamento humano simulado
+- Janelas de tempo seguras
+- Detecção e recovery automático
+
+📊 **Monitoramento:**
+- Dashboard em tempo real
+- Métricas de qualidade dos dados
+- Insights de mercado automáticos
+- Detecção de oportunidades
+
+---
+
 **Desenvolvido com WAT Framework (Workflows, Agents, Tools)**
-Versão: 0.7.0 (Sistema RAG Completo Operacional)
+Versão: 0.8.0 (Sistema de Scraping em Produção)
 Última atualização: 2026-02-05

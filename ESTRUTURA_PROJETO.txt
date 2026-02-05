@@ -1,0 +1,319 @@
+┌─────────────────────────────────────────────────────────────────────┐
+│                  RAG INFOIMÓVEIS - v0.8.0                          │
+│             Sistema de Scraping em Produção                        │
+└─────────────────────────────────────────────────────────────────────┘
+
+📁 rag_infoimoeveis/
+│
+├── 📄 COMECE_AQUI.md                    ⭐ LEIA PRIMEIRO
+├── 📄 GUIA_RAPIDO_SCRAPING.md           🚀 Quick start
+├── 📄 RESUMO_EXECUTIVO_v0.8.md          📋 Visão executiva
+├── 📄 README.md                         📖 Documentação geral
+│
+├── 🐍 tools/                             Scripts Python
+│   │
+│   ├── ⚡ CORE SCRAPING
+│   │   ├── scraper_production.py       ✅ Scraper principal
+│   │   ├── scrape_workflow.py          ✅ Orquestrador completo
+│   │   ├── property_saver.py           ✅ Integração PostgreSQL
+│   │   └── metrics_dashboard.py        ✅ Dashboard métricas
+│   │
+│   ├── 🛡️ PROTEÇÕES ANTI-BLOQUEIO
+│   │   ├── rate_limiter.py             ✅ Delays e limites
+│   │   ├── cookie_manager.py           ✅ Sessão persistente
+│   │   ├── fingerprint_rotator.py      ✅ Rotação identidade
+│   │   └── human_behavior.py           ✅ Simulação humana
+│   │
+│   └── 🧪 TESTES
+│       ├── test_05_pgvector.py         ✅ PostgreSQL
+│       ├── test_06_embeddings.py       ✅ Embeddings
+│       ├── test_07_rag_system.py       ✅ Sistema RAG
+│       └── test_08_scraping_system.py  ✅ Sistema completo
+│
+├── 📚 workflows/                         SOPs e documentação
+│   ├── scraping_producao.md            ✅ Workflow produção
+│   ├── scraping.md                     Scraping básico
+│   └── anti-bloqueio.md                🔥 Estratégias críticas
+│
+├── 🗄️ sql/
+│   └── schema.sql                      ✅ Schema PostgreSQL
+│
+├── 🐳 docker-compose.yml                ✅ PostgreSQL + n8n
+├── 📝 .env                              Configurações
+└── 📝 .env.INSTRUCOES                   Como obter API keys
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                     ARQUIVOS GERADOS                                │
+└─────────────────────────────────────────────────────────────────────┘
+
+📁 .tmp/                                  Arquivos temporários
+    ├── cookies.json                     🍪 Cookies Cloudflare (6h)
+    ├── discovered_urls.json             📋 URLs descobertas
+    ├── workflow_report.json             📊 Relatório workflow
+    └── dashboard_report_*.json          📈 Exportações dashboard
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                    FLUXO DE EXECUÇÃO                                │
+└─────────────────────────────────────────────────────────────────────┘
+
+1. VERIFICAÇÃO
+   └─> python tools/test_08_scraping_system.py
+
+2. SCRAPING
+   ├─> Teste (5 imóveis)
+   │   └─> python tools/scraper_production.py
+   │
+   └─> Produção (50+ imóveis)
+       └─> python tools/scrape_workflow.py --mode full --max-properties 50
+
+3. MONITORAMENTO
+   └─> python tools/metrics_dashboard.py
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                COMPONENTES DO SISTEMA                               │
+└─────────────────────────────────────────────────────────────────────┘
+
+╔═══════════════════════════════════════════════════════════════════╗
+║                  SCRAPE_WORKFLOW.PY                               ║
+║                  (Orquestrador)                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+      Discovery          Scraping            Monitoring
+          │                   │                   │
+   ┌──────────┐      ┌────────────────┐    ┌────────────┐
+   │ URLs     │      │ scraper_       │    │ metrics_   │
+   │ (JSON)   │      │ production.py  │    │ dashboard  │
+   └──────────┘      └────────────────┘    └────────────┘
+                              │
+               ┌──────────────┼──────────────┐
+               │              │              │
+        ┌──────────┐   ┌──────────┐   ┌──────────┐
+        │ rate_    │   │ cookie_  │   │ finger-  │
+        │ limiter  │   │ manager  │   │ print    │
+        └──────────┘   └──────────┘   └──────────┘
+               │              │              │
+        ┌──────────┐          └──────────────┘
+        │ human_   │
+        │ behavior │
+        └──────────┘
+               │
+               ▼
+        ┌──────────────┐
+        │ property_    │
+        │ saver.py     │
+        └──────────────┘
+               │
+               ▼
+        ╔══════════════╗
+        ║ PostgreSQL   ║
+        ║ + pgvector   ║
+        ╚══════════════╝
+
+┌─────────────────────────────────────────────────────────────────────┐
+│              PROTEÇÕES ANTI-BLOQUEIO (7 CAMADAS)                    │
+└─────────────────────────────────────────────────────────────────────┘
+
+1️⃣  Rate Limiting
+    ├─ Delays: 5-12 segundos
+    ├─ Limite hora: 50 requests
+    └─ Limite dia: 400 requests
+
+2️⃣  Janelas Seguras
+    ├─ Madrugada: 03:00 - 06:00
+    ├─ Almoço: 13:00 - 15:00
+    └─ Noite: 22:00 - 00:00
+
+3️⃣  Browser Real
+    └─ headless=False (Cloudflare não detecta)
+
+4️⃣  Cookies Persistentes
+    ├─ TTL: 6 horas
+    └─ Renovação automática
+
+5️⃣  Fingerprint Rotation
+    ├─ User-Agent aleatório
+    ├─ Viewport aleatório
+    └─ Timezone do Brasil
+
+6️⃣  Comportamento Humano
+    ├─ Scroll gradual
+    ├─ Movimento mouse
+    └─ Pausas aleatórias
+
+7️⃣  Auto-Recovery
+    ├─ Detecção bloqueio
+    ├─ Pausa 1 hora
+    └─ Renovação cookies
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                   BANCO DE DADOS (PostgreSQL)                       │
+└─────────────────────────────────────────────────────────────────────┘
+
+📊 TABELAS:
+
+┌─────────────────────┬──────────┬─────────────────────────────┐
+│ Tabela              │ Registros│ Descrição                   │
+├─────────────────────┼──────────┼─────────────────────────────┤
+│ properties          │ 0 → 12k/m│ Imóveis coletados          │
+│ property_embeddings │ 0 → 12k/m│ Vetores RAG (1024 dims)    │
+│ scrape_jobs         │ -        │ Fila de scraping           │
+│ market_stats        │ -        │ Cache estatísticas         │
+└─────────────────────┴──────────┴─────────────────────────────┘
+
+📈 ÍNDICES:
+
+- idx_properties_location (city, neighborhood)
+- idx_properties_type_use (property_type, property_use)
+- idx_properties_price (price_brl)
+- idx_embeddings_vector (IVFFLAT - busca vetorial)
+
+🔧 EXTENSÕES:
+
+- pgvector 0.8.1  (busca vetorial)
+- uuid-ossp 1.1   (UUIDs)
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                      COMANDOS ÚTEIS                                 │
+└─────────────────────────────────────────────────────────────────────┘
+
+🔍 VERIFICAÇÃO
+  docker ps | grep postgres              # PostgreSQL rodando?
+  python tools/test_08_scraping_system.py # Sistema OK?
+
+⚡ SCRAPING
+  python tools/scraper_production.py     # Teste (5 imóveis)
+  python tools/scrape_workflow.py \
+    --mode full --max-properties 50      # Produção (50 imóveis)
+
+📊 MONITORAMENTO
+  python tools/metrics_dashboard.py      # Dashboard terminal
+  python tools/metrics_dashboard.py \
+    --export                             # Exportar JSON
+
+🗄️ BANCO DE DADOS
+  psql -h localhost -p 5433 \
+    -U postgres -d infoimoveis           # Conectar PostgreSQL
+
+  SELECT COUNT(*) FROM properties;       # Total imóveis
+
+  SELECT neighborhood, COUNT(*)
+  FROM properties
+  GROUP BY neighborhood
+  ORDER BY COUNT(*) DESC
+  LIMIT 10;                              # Top 10 bairros
+
+🍪 COOKIES
+  python tools/cookie_manager.py         # Info cookies
+  rm .tmp/cookies.json                   # Forçar renovação
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                       CAPACIDADE                                    │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌──────────────┬────────┬──────────────────────────────┐
+│ Métrica      │ Valor  │ Observação                   │
+├──────────────┼────────┼──────────────────────────────┤
+│ Imóveis/hora │ 50     │ Limite seguro                │
+│ Imóveis/dia  │ 400    │ Limite conservador           │
+│ Imóveis/mês  │ ~12.000│ Uso contínuo                 │
+│ Duração 50   │ 20-30m │ Com delays segurança         │
+│ Duração 400  │ 4-6h   │ Duas sessões diárias         │
+└──────────────┴────────┴──────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                   METAS DE POPULAÇÃO                                │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌────────┬─────────┬────────┬─────────────────────────┐
+│ Imóveis│ Tempo   │ Status │ Utilidade               │
+├────────┼─────────┼────────┼─────────────────────────┤
+│ 50     │ 1 dia   │ 🎯     │ Validação técnica       │
+│ 500    │ 1 semana│ 🔜     │ Dataset inicial         │
+│ 2.000  │ 1 mês   │ 📋     │ RAG funcional           │
+│ 5.000+ │ 2-3 m   │ 📋     │ Produção completa       │
+└────────┴─────────┴────────┴─────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                      TECNOLOGIAS                                    │
+└─────────────────────────────────────────────────────────────────────┘
+
+🐍 Python 3.14
+   ├─ playwright          (scraping)
+   ├─ psycopg2            (PostgreSQL)
+   └─ python-dotenv       (configuração)
+
+🗄️ PostgreSQL 16
+   └─ pgvector 0.8.1      (busca vetorial)
+
+🐳 Docker
+   ├─ PostgreSQL
+   └─ n8n (futuro)
+
+☁️ APIs FREE
+   ├─ Cohere (embeddings)
+   ├─ Groq (LLM)
+   └─ Mistral (backup)
+
+💰 CUSTO TOTAL: $0
+   (100% free tier + self-hosted)
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                     STATUS DO PROJETO                               │
+└─────────────────────────────────────────────────────────────────────┘
+
+✅ 0.1-0.4 Scraping básico
+✅ 0.5 PostgreSQL + pgvector
+✅ 0.6 Pipeline Embeddings
+✅ 0.7 Sistema RAG
+✅ 0.8 Scraping Produção       ← VOCÊ ESTÁ AQUI
+🔜 0.9 Popular banco (1000+)
+📋 1.0 API REST
+📋 1.1 Integração n8n
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                    PRÓXIMOS PASSOS                                  │
+└─────────────────────────────────────────────────────────────────────┘
+
+1. 📖 Ler: COMECE_AQUI.md
+
+2. 🧪 Testar:
+   python tools/test_08_scraping_system.py
+
+3. ⚡ Scraping teste:
+   python tools/scraper_production.py
+
+4. 📊 Dashboard:
+   python tools/metrics_dashboard.py
+
+5. 🚀 Escalar:
+   python tools/scrape_workflow.py --mode full --max-properties 50
+
+6. 🎯 Meta: 1000+ imóveis no banco
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                        SUPORTE                                      │
+└─────────────────────────────────────────────────────────────────────┘
+
+📖 Documentação:
+   ├─ COMECE_AQUI.md (início)
+   ├─ GUIA_RAPIDO_SCRAPING.md (quick start)
+   ├─ workflows/scraping_producao.md (completo)
+   └─ workflows/anti-bloqueio.md (técnico)
+
+🔧 Troubleshooting:
+   └─ README.md (seção Troubleshooting)
+
+💼 Executivo:
+   └─ RESUMO_EXECUTIVO_v0.8.md
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                  DESENVOLVIDO COM                                   │
+│                  WAT FRAMEWORK                                      │
+│         (Workflows, Agents, Tools)                                  │
+│                                                                     │
+│  Versão: 0.8.0 (Sistema de Scraping em Produção)                  │
+│  Data: 2026-02-05                                                  │
+│  Status: ✅ Operacional                                            │
+└─────────────────────────────────────────────────────────────────────┘
