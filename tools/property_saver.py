@@ -218,6 +218,66 @@ def bulk_insert_properties(properties: List[Dict], update_if_exists: bool = True
     return stats
 
 
+def get_recent_properties(limit: int = 50) -> List[Dict]:
+    """
+    Retorna os imóveis mais recentes do banco
+
+    Args:
+        limit: Número máximo de imóveis a retornar
+
+    Returns:
+        Lista de dicionários com dados dos imóveis
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        cursor.execute("""
+            SELECT
+                source_url,
+                title,
+                description,
+                property_type,
+                property_use,
+                transaction_type,
+                neighborhood,
+                city,
+                state,
+                address,
+                area_total_m2,
+                area_built_m2,
+                bedrooms,
+                bathrooms,
+                suites,
+                parking_spaces,
+                price_brl,
+                price_per_m2,
+                condominium_fee_brl,
+                iptu_annual_brl,
+                features,
+                images,
+                data_completeness as completeness,
+                scraped_at
+            FROM properties
+            ORDER BY scraped_at DESC
+            LIMIT %s
+        """, (limit,))
+
+        properties = []
+        for row in cursor.fetchall():
+            prop = dict(row)
+            # Converter created_at para string se existir
+            if prop.get('created_at'):
+                prop['created_at'] = prop['created_at'].isoformat()
+            properties.append(prop)
+
+        return properties
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
 def get_property_stats() -> Dict:
     """Retorna estatísticas dos imóveis no banco"""
     conn = get_db_connection()
