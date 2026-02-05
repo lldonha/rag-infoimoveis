@@ -1,0 +1,262 @@
+#!/usr/bin/env python3
+"""
+Workflow Completo: Discovery → Scraping → Database
+===================================================
+
+Pipeline end-to-end automático:
+1. Discovery filtrado (buscar URLs)
+2. Scraping com stealth (coletar dados)
+3. Salvar no PostgreSQL
+4. Gerar relatório de métricas
+
+Uso:
+    python tools/workflow_complete.py --preset segredo_100_200k --limit 50
+"""
+
+import asyncio
+import argparse
+import sys
+from pathlib import Path
+from datetime import datetime
+from typing import List, Dict
+
+# Imports dos módulos
+sys.path.append(str(Path(__file__).parent))
+
+from discovery_filtered import discover_by_preset
+from scraper_stealth import scrape_property_stealth, test_stealth_single
+from property_saver import insert_property, get_property_stats
+
+
+async def workflow_complete(
+    preset: str = 'segredo_100_200k',
+    max_pages: int = 3,
+    limit: int = 50,
+    save_to_db: bool = True,
+    headless: bool = True,
+) -> Dict:
+    """
+    Executa workflow completo de scraping
+
+    Args:
+        preset: Preset de busca (segredo_100_200k, centro_apartamentos, etc)
+        max_pages: Máximo de páginas no discovery
+        limit: Máximo de imóveis a processar
+        save_to_db: Salvar no PostgreSQL
+        headless: Modo headless
+
+    Returns:
+        Dict com estatísticas do processo
+    """
+
+    stats = {
+        'start_time': datetime.now(),
+        'discovery': {'urls_found': 0, 'time_seconds': 0},
+        'scraping': {'total': 0, 'success': 0, 'errors': 0, 'time_seconds': 0},
+        'database': {'saved': 0, 'duplicates': 0},
+    }
+
+    print("=" * 70)
+    print("🚀 WORKFLOW COMPLETO - Discovery → Scraping → Database")
+    print("=" * 70)
+    print(f"Preset: {preset}")
+    print(f"Max páginas: {max_pages}")
+    print(f"Limite: {limit}")
+    print(f"Modo: {'headless' if headless else 'visível'}")
+    print("=" * 70)
+
+    # ==========================================
+    # ETAPA 1: DISCOVERY
+    # ==========================================
+    print("\n📍 ETAPA 1/3: Discovery de URLs")
+    print("-" * 70)
+
+    discovery_start = datetime.now()
+
+    try:
+        # TODO: Implementar discovery
+        urls = await discover_by_preset(preset, max_pages=max_pages)
+
+        discovery_time = (datetime.now() - discovery_start).total_seconds()
+
+        stats['discovery']['urls_found'] = len(urls)
+        stats['discovery']['time_seconds'] = discovery_time
+
+        print(f"✅ Discovery concluído: {len(urls)} URLs em {discovery_time:.1f}s")
+
+        # Limitar URLs
+        if len(urls) > limit:
+            urls = urls[:limit]
+            print(f"⚠️  Limitado a {limit} URLs")
+
+        if not urls:
+            print("❌ Nenhuma URL encontrada!")
+            return stats
+
+    except Exception as e:
+        print(f"❌ Erro no discovery: {e}")
+        return stats
+
+    # ==========================================
+    # ETAPA 2: SCRAPING
+    # ==========================================
+    print(f"\n🔍 ETAPA 2/3: Scraping de {len(urls)} imóveis")
+    print("-" * 70)
+
+    scraping_start = datetime.now()
+    stats['scraping']['total'] = len(urls)
+
+    # TODO: Implementar scraping em batch
+    # - Loop pelas URLs
+    # - Usar scrape_property_stealth()
+    # - Coletar dados
+    # - Rate limiting entre requests
+
+    scraped_data = []
+
+    for i, url in enumerate(urls, 1):
+        print(f"\n[{i}/{len(urls)}] {url}")
+
+        try:
+            # TODO: Implementar scraping
+            data = await scrape_property_stealth(url, headless=headless)
+
+            if data:
+                scraped_data.append(data)
+                stats['scraping']['success'] += 1
+                print(f"   ✅ Sucesso")
+            else:
+                stats['scraping']['errors'] += 1
+                print(f"   ❌ Falha")
+
+        except Exception as e:
+            stats['scraping']['errors'] += 1
+            print(f"   ❌ Erro: {e}")
+
+    scraping_time = (datetime.now() - scraping_start).total_seconds()
+    stats['scraping']['time_seconds'] = scraping_time
+
+    print(f"\n✅ Scraping concluído: {stats['scraping']['success']}/{stats['scraping']['total']} em {scraping_time:.1f}s")
+
+    # ==========================================
+    # ETAPA 3: SALVAR NO BANCO
+    # ==========================================
+    if save_to_db and scraped_data:
+        print(f"\n💾 ETAPA 3/3: Salvando {len(scraped_data)} imóveis no PostgreSQL")
+        print("-" * 70)
+
+        # TODO: Implementar salvamento
+        # - Converter PropertyData para dict
+        # - Usar insert_property() ou bulk_insert_properties()
+        # - Contar duplicados
+
+        saved = 0
+        duplicates = 0
+
+        for data in scraped_data:
+            try:
+                # TODO: Implementar salvamento
+                # result = insert_property(data.to_dict(), update_if_exists=True)
+                # if result: saved += 1
+                pass
+            except Exception as e:
+                print(f"   ❌ Erro ao salvar: {e}")
+
+        stats['database']['saved'] = saved
+        stats['database']['duplicates'] = duplicates
+
+        print(f"✅ Salvamento concluído: {saved} imóveis")
+
+    # ==========================================
+    # RELATÓRIO FINAL
+    # ==========================================
+    stats['end_time'] = datetime.now()
+    stats['total_time_seconds'] = (stats['end_time'] - stats['start_time']).total_seconds()
+
+    print("\n" + "=" * 70)
+    print("📊 RELATÓRIO FINAL")
+    print("=" * 70)
+
+    print(f"\n🕐 Tempo total: {stats['total_time_seconds']:.1f}s")
+
+    print(f"\n📍 Discovery:")
+    print(f"   URLs encontradas: {stats['discovery']['urls_found']}")
+    print(f"   Tempo: {stats['discovery']['time_seconds']:.1f}s")
+
+    print(f"\n🔍 Scraping:")
+    print(f"   Total: {stats['scraping']['total']}")
+    print(f"   Sucesso: {stats['scraping']['success']} ({stats['scraping']['success']/stats['scraping']['total']*100:.0f}%)")
+    print(f"   Erros: {stats['scraping']['errors']}")
+    print(f"   Tempo: {stats['scraping']['time_seconds']:.1f}s")
+
+    if save_to_db:
+        print(f"\n💾 Database:")
+        print(f"   Salvos: {stats['database']['saved']}")
+        print(f"   Duplicados: {stats['database']['duplicates']}")
+
+        # Métricas do banco
+        try:
+            db_stats = get_property_stats()
+            print(f"\n📊 Banco de dados:")
+            print(f"   Total de imóveis: {db_stats['total']}")
+            print(f"   Completude média: {db_stats['avg_completeness']:.1%}")
+        except:
+            pass
+
+    print("\n" + "=" * 70)
+
+    # Validação final
+    success_rate = stats['scraping']['success'] / stats['scraping']['total'] if stats['scraping']['total'] > 0 else 0
+
+    if success_rate >= 0.9:
+        print("✅ SUCESSO! Taxa de sucesso ≥90%")
+        return stats
+    else:
+        print(f"⚠️  ATENÇÃO! Taxa de sucesso baixa: {success_rate:.0%}")
+        return stats
+
+
+def main():
+    """Função principal com argumentos CLI"""
+
+    parser = argparse.ArgumentParser(description='Workflow completo de scraping')
+
+    parser.add_argument('--preset', type=str, default='segredo_100_200k',
+                        help='Preset de busca (default: segredo_100_200k)')
+    parser.add_argument('--max-pages', type=int, default=3,
+                        help='Máximo de páginas no discovery (default: 3)')
+    parser.add_argument('--limit', type=int, default=50,
+                        help='Máximo de imóveis a processar (default: 50)')
+    parser.add_argument('--save-to-db', action='store_true',
+                        help='Salvar no PostgreSQL')
+    parser.add_argument('--headless', action='store_true', default=True,
+                        help='Modo headless (default: True)')
+
+    args = parser.parse_args()
+
+    # Executar workflow
+    try:
+        stats = asyncio.run(workflow_complete(
+            preset=args.preset,
+            max_pages=args.max_pages,
+            limit=args.limit,
+            save_to_db=args.save_to_db,
+            headless=args.headless,
+        ))
+
+        # Exit code baseado no sucesso
+        success_rate = stats['scraping']['success'] / stats['scraping']['total'] if stats['scraping']['total'] > 0 else 0
+        sys.exit(0 if success_rate >= 0.9 else 1)
+
+    except KeyboardInterrupt:
+        print("\n⚠️  Workflow cancelado pelo usuário")
+        sys.exit(2)
+    except Exception as e:
+        print(f"\n❌ Erro fatal: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(3)
+
+
+if __name__ == "__main__":
+    main()

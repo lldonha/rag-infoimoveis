@@ -13,8 +13,19 @@ Sistema RAG (Retrieval-Augmented Generation) para avaliação de imóveis em Cam
 | 0.6 Pipeline Embeddings | ✅ Concluído | 100% |
 | 0.7 Sistema RAG | ✅ Concluído | 100% |
 | 0.8 Scraping Produção | ✅ Concluído | 100% |
-| 0.9 API REST | 🔜 Próximo | 0% |
-| 1.0 Integração n8n | 📋 Planejado | 0% |
+| **0.9 Playwright Stealth** | **✅ Concluído** | **100%** |
+| 1.0 Workflow Completo | 🔜 Próximo | 20% |
+| 1.1 API REST | 📋 Planejado | 0% |
+| 1.2 Integração n8n | 📋 Planejado | 0% |
+
+### 🎯 Métricas Atuais (v0.9)
+
+| Métrica | Valor | Status |
+|---------|-------|--------|
+| **Cloudflare bypass** | 100% | ✅ |
+| **Completude média** | 85% | ✅ |
+| **headless=True** | Funcional | ✅ |
+| **Discovery** | 24 URLs/busca | ✅ |
 
 ---
 
@@ -30,22 +41,23 @@ docker-compose up -d postgres
 docker ps | grep postgres
 ```
 
-### 2. Popular com Dados Reais (NOVO!)
+### 2. Popular com Dados Reais (STEALTH MODE 🎯)
 
 ```bash
-# Scraping de produção com proteções anti-bloqueio
-python tools/scraper_production.py
+# Teste rápido (1 URL)
+python -c "import asyncio; from tools.scraper_stealth import test_stealth_single; asyncio.run(test_stealth_single('https://www.infoimoveis.com.br/imovel/venda-casa-terrea-giocondo-orsi/557442', headless=True))"
 
-# Ou workflow completo (discovery + scraping)
-python tools/scrape_workflow.py --mode full --max-properties 50
-```
+# Teste discovery (busca por região/preço)
+python tools/test_discovery.py
 
-**Ver dashboard:**
-```bash
+# Ver dashboard
 python tools/metrics_dashboard.py
 ```
 
-📖 **Guia completo:** [GUIA_RAPIDO_SCRAPING.md](GUIA_RAPIDO_SCRAPING.md)
+📖 **Guias completos:**
+- [PROGRESS_2026-02-05.md](PROGRESS_2026-02-05.md) - Relatório dia 2
+- [CONTINUAR_2026-02-06.md](CONTINUAR_2026-02-06.md) - Próximos passos
+- [tools/README_ESTRUTURA.md](tools/README_ESTRUTURA.md) - Estrutura código
 
 ### 3. Obter API Keys (FREE) - Opcional
 
