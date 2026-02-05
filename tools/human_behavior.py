@@ -5,12 +5,13 @@ Human Behavior Simulator
 Simula comportamento humano para evitar detecção
 """
 
+import asyncio
 import random
 import time
 from typing import Optional
 
 
-def human_scroll(page, duration: float = None):
+async def human_scroll(page, duration: float = None):
     """
     Simula scroll humano realista
 
@@ -33,10 +34,10 @@ def human_scroll(page, duration: float = None):
             scroll_amount = -random.randint(100, 300)
 
         page.evaluate(f"window.scrollBy(0, {scroll_amount})")
-        time.sleep(step_duration + random.uniform(-0.2, 0.3))
+        await asyncio.sleep(step_duration + random.uniform(-0.2, 0.3))
 
 
-def human_mouse_move(page, num_moves: int = None):
+async def human_mouse_move(page, num_moves: int = None):
     """
     Simula movimentos de mouse naturais
 
@@ -53,12 +54,12 @@ def human_mouse_move(page, num_moves: int = None):
 
         try:
             page.mouse.move(x, y)
-            time.sleep(random.uniform(0.1, 0.5))
+            await asyncio.sleep(random.uniform(0.1, 0.5))
         except:
             pass  # Ignora erros de mouse fora da tela
 
 
-def random_pause(probability: float = 0.1):
+async def random_pause(probability: float = 0.1):
     """
     Pausa aleatória ocasional (humanos não são constantes)
 
@@ -68,7 +69,7 @@ def random_pause(probability: float = 0.1):
     if random.random() < probability:
         pause = random.uniform(15, 45)
         print(f"☕ Pausa humana: {pause:.1f}s")
-        time.sleep(pause)
+        await asyncio.sleep(pause)
 
 
 def human_read_time(content_length: int) -> float:
@@ -89,7 +90,7 @@ def human_read_time(content_length: int) -> float:
     return base_time * variation
 
 
-def simulate_reading(page, min_time: float = 3, max_time: float = 8):
+async def simulate_reading(page, min_time: float = 3, max_time: float = 8):
     """
     Simula humano lendo a página
 
@@ -105,7 +106,7 @@ def simulate_reading(page, min_time: float = 3, max_time: float = 8):
     scroll_interval = read_time / num_scrolls
 
     for i in range(num_scrolls):
-        time.sleep(scroll_interval * random.uniform(0.8, 1.2))
+        await asyncio.sleep(scroll_interval * random.uniform(0.8, 1.2))
 
         # Scroll pequeno
         scroll_amount = random.randint(100, 400)
@@ -135,7 +136,7 @@ def human_typing_speed() -> float:
     return random.uniform(0.08, 0.25)
 
 
-def wait_for_page_load(page, min_wait: float = 2, max_wait: float = 5):
+async def wait_for_page_load(page, min_wait: float = 2, max_wait: float = 5):
     """
     Aguarda carregamento da página com tempo humano
 
@@ -145,10 +146,10 @@ def wait_for_page_load(page, min_wait: float = 2, max_wait: float = 5):
         max_wait: Tempo máximo de espera
     """
     wait_time = random.uniform(min_wait, max_wait)
-    time.sleep(wait_time)
+    await asyncio.sleep(wait_time)
 
 
-def simulate_human_session(page, url: str):
+async def simulate_human_session(page, url: str):
     """
     Simula sessão humana completa ao visitar uma página
 
@@ -159,22 +160,22 @@ def simulate_human_session(page, url: str):
     print(f"🤖 Simulando comportamento humano em {url[:50]}...")
 
     # 1. Aguardar carregamento inicial
-    wait_for_page_load(page, 2, 5)
+    await wait_for_page_load(page, 2, 5)
 
     # 2. Movimento de mouse inicial
-    human_mouse_move(page, num_moves=2)
+    await human_mouse_move(page, num_moves=2)
 
     # 3. Scroll explorativo
-    human_scroll(page, duration=3)
+    await human_scroll(page, duration=3)
 
     # 4. "Leitura" do conteúdo
-    simulate_reading(page, min_time=4, max_time=8)
+    await simulate_reading(page, min_time=4, max_time=8)
 
     # 5. Mais alguns movimentos de mouse
-    human_mouse_move(page, num_moves=3)
+    await human_mouse_move(page, num_moves=3)
 
     # 6. Pausa ocasional
-    random_pause(probability=0.15)
+    await random_pause(probability=0.15)
 
     print(f"✅ Simulação humana completa")
 

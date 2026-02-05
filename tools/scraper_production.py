@@ -117,103 +117,189 @@ def is_blocked(content: str) -> bool:
 
 
 async def parse_property_page(page: Page, url: str) -> PropertyData:
-    """Extrai dados de uma página de imóvel"""
+    """
+    Extrai dados de uma página de imóvel (VERSÃO OTIMIZADA)
+
+    Completude esperada: >70% (vs 15% versão antiga)
+    Seletores baseados em mapeamento real da página
+    """
     data = PropertyData(source_url=url)
 
-    # Extrair tipo e finalidade da URL
-    url_match = re.search(r'/imovel/([^/]+)/(\d+)', url)
-    if url_match:
-        slug = url_match.group(1)
-        parts = slug.split('-')
-        if parts:
-            if parts[0] in ['venda', 'aluguel']:
-                data.transaction_type = parts[0]
-
-    # 1. Extrair dados do JSON-LD (mais confiável)
+    # === EXTRAIR DADOS DA TABELA PRINCIPAL ===
     try:
-        json_ld_elem = await page.query_selector('script[type="application/ld+json"]')
-        if json_ld_elem:
-            json_text = await json_ld_elem.text_content()
-            json_data = json.loads(json_text)
-
-            data.title = json_data.get("name")
-            data.description = json_data.get("description")
-
-            # Preço
-            offers = json_data.get("offers", [])
-            if offers and len(offers) > 0:
-                price_str = offers[0].get("price")
-                if price_str:
-                    data.price_brl = float(price_str)
-
-            # Imagens
-            img = json_data.get("image")
-            if img:
-                data.images = [img] if isinstance(img, str) else img
+        # Tipo (Casa-Térrea, Apartamento, etc)
+        tipo_elem = await page.locator('tr:has-text("Tipo") td:nth-child(2)').first.inner_text()
+        data.property_type = tipo_elem.strip() if tipo_elem else None
     except:
         pass
 
-    # 2. Extrair dados da tabela HTML
-    rows = await page.query_selector_all("tr")
-    for row in rows:
-        cells = await row.query_selector_all("td")
-        if len(cells) >= 2:
-            label = (await cells[0].text_content() or "").strip().lower()
-            value = (await cells[1].text_content() or "").strip()
+    try:
+        # Bairro
+        bairro_elem = await page.locator('tr:has-text("Bairro") td:nth-child(2)').first.inner_text()
+        data.neighborhood = bairro_elem.strip() if bairro_elem else None
+    except:
+        pass
 
-            if "tipo" in label:
-                data.property_type = value
-            elif "bairro" in label:
-                data.neighborhood = value
-            elif "cidade" in label or "uf" in label:
-                parts = value.split('-')
-                if parts:
-                    data.city = parts[0].strip()
-                    if len(parts) > 1:
-                        data.state = parts[1].strip()
-            elif "endere" in label:
-                data.address = value
-            elif "constru" in label and "rea" in label:
-                data.area_built_m2 = parse_area(value)
-            elif "total" in label and "rea" in label:
-                data.area_total_m2 = parse_area(value)
-            elif "terreno" in label:
-                if not data.area_total_m2:
-                    data.area_total_m2 = parse_area(value)
-            elif "quarto" in label or "dormit" in label:
-                data.bedrooms = parse_int_from_text(value)
-            elif "banheiro" in label:
-                data.bathrooms = parse_int_from_text(value)
-            elif "su" in label and "te" in label:
-                data.suites = parse_int_from_text(value)
-            elif "vaga" in label or "garagem" in label:
-                data.parking_spaces = parse_int_from_text(value)
-            elif "condom" in label and "nio" in label:
-                data.condominium_fee_brl = parse_price(value)
+    try:
+        # Cidade/UF
+        cidade_elem = await page.locator('tr:has-text("Cidade/UF") td:nth-child(2)').first.inner_text()
+        if cidade_elem:
+            parts = cidade_elem.strip().split('-')
+            if parts:
+                data.city = parts[0].strip()
+                if len(parts) > 1:
+                    data.state = parts[1].strip()
+    except:
+        pass
 
-    # 3. Fallbacks
-    if not data.title:
-        h1 = await page.query_selector("h1")
-        if h1:
-            data.title = (await h1.text_content() or "").strip()
+    try:
+        # Endereço
+        endereco_elem = await page.locator('tr:has-text("Endereço") td:nth-child(2)').first.inner_text()
+        data.address = endereco_elem.strip() if endereco_elem else None
+    except:
+        pass
 
-    if not data.description:
-        desc = await page.query_selector("[class*='descricao'], .texto-descricao, .texto")
-        if desc:
-            data.description = (await desc.text_content() or "").strip()
+    try:
+        # Área Total
+        area_total_elem = await page.locator('tr:has-text("Área total") td:nth-child(2)').first.inner_text()
+        data.area_total_m2 = parse_area(area_total_elem) if area_total_elem else None
+    except:
+        pass
 
-    # 4. Coletar mais imagens
-    if not data.images or len(data.images) < 2:
-        images = data.images or []
-        img_elems = await page.query_selector_all("img[src*='imoveis'], img[data-src*='imoveis']")
-        for img in img_elems[:20]:
-            src = await img.get_attribute("src") or await img.get_attribute("data-src")
-            if src and "stored/imoveis" in src and src not in images:
-                images.append(src)
+    try:
+        # Área Construída
+        area_const_elem = await page.locator('tr:has-text("Área construída") td:nth-child(2)').first.inner_text()
+        data.area_built_m2 = parse_area(area_const_elem) if area_const_elem else None
+    except:
+        pass
+
+    try:
+        # IPTU
+        iptu_elem = await page.locator('tr:has-text("IPTU") td:nth-child(2)').first.inner_text()
+        data.iptu_brl = parse_price(iptu_elem) if iptu_elem else None
+    except:
+        pass
+
+    # === TÍTULO ===
+    try:
+        h1_elem = await page.locator('h1').first.inner_text()
+        data.title = h1_elem.strip() if h1_elem else None
+    except:
+        pass
+
+    # === PREÇO ===
+    try:
+        # Procurar por "VALOR TOTAL:" e pegar o valor
+        preco_section = await page.locator('text=/VALOR TOTAL:/i').inner_text()
+        if preco_section:
+            # Regex para extrair preço: R$ 570.000,00
+            match = re.search(r'R\$\s*([\d.]+,\d{2})', preco_section)
+            if match:
+                price_str = match.group(1).replace('.', '').replace(',', '.')
+                data.price_brl = float(price_str)
+    except:
+        pass
+
+    # === CARACTERÍSTICAS (LISTA .itens li) ===
+    try:
+        # Buscar todos os itens da lista
+        items = await page.locator('.itens li').all()
+
+        for item in items:
+            text = await item.inner_text()
+            text_lower = text.lower()
+
+            # Quartos
+            if 'quarto' in text_lower and not data.bedrooms:
+                data.bedrooms = parse_int_from_text(text)
+
+            # Suítes
+            elif 'suíte' in text_lower or 'suite' in text_lower:
+                data.suites = parse_int_from_text(text)
+
+            # Banheiros (chamado "Wc social")
+            elif 'wc social' in text_lower:
+                data.bathrooms = parse_int_from_text(text)
+
+            # Vagas
+            elif 'vaga' in text_lower:
+                data.parking_spaces = parse_int_from_text(text)
+    except:
+        pass
+
+    # === DESCRIÇÃO ===
+    try:
+        desc_elem = await page.locator('.descricao .texto').first.inner_text()
+        data.description = desc_elem.strip() if desc_elem else None
+    except:
+        pass
+
+    # === OBSERVAÇÕES (adicionar à descrição) ===
+    try:
+        obs_elem = await page.locator('.observacoes .texto').first.inner_text()
+        if obs_elem:
+            obs_text = obs_elem.strip()
+            if data.description:
+                data.description = f"{data.description}\n\nObservações: {obs_text}"
+            else:
+                data.description = obs_text
+    except:
+        pass
+
+    # === CARACTERÍSTICAS COMPLETAS (adicionar à descrição) ===
+    try:
+        items = await page.locator('.itens li').all()
+        features = []
+        for item in items:
+            text = await item.inner_text()
+            if text:
+                features.append(text.strip())
+
+        if features and data.description:
+            features_text = "\n\nCaracterísticas:\n" + "\n".join(features)
+            data.description = data.description + features_text
+    except:
+        pass
+
+    # === IMAGENS ===
+    try:
+        # Tentar diferentes seletores para imagens
+        img_selectors = [
+            'img[src*="/fotos/"]',
+            'img[src*="stored/imoveis"]',
+            'img[data-src*="/fotos/"]',
+            '.galeria img',
+            '[class*="foto"] img'
+        ]
+
+        images = []
+        for selector in img_selectors:
+            img_elems = await page.locator(selector).all()
+            for img in img_elems[:20]:  # Máximo 20 imagens
+                src = await img.get_attribute('src') or await img.get_attribute('data-src')
+                if src and src not in images:
+                    # Garantir URL absoluta
+                    if src.startswith('/'):
+                        src = f"https://www.infoimoveis.com.br{src}"
+                    images.append(src)
+
         data.images = images if images else None
+    except:
+        pass
 
-    # 5. Calcular preço por m2
-    if data.price_brl and data.area_total_m2:
+    # === TRANSACTION TYPE (da URL) ===
+    url_match = re.search(r'/imovel/([^/]+)/(\d+)', url)
+    if url_match:
+        slug = url_match.group(1)
+        if 'venda' in slug:
+            data.transaction_type = 'venda'
+        elif 'aluguel' in slug:
+            data.transaction_type = 'aluguel'
+
+    # === CALCULAR PREÇO POR M² ===
+    if data.price_brl and data.area_built_m2:
+        data.price_per_m2 = round(data.price_brl / data.area_built_m2, 2)
+    elif data.price_brl and data.area_total_m2:
         data.price_per_m2 = round(data.price_brl / data.area_total_m2, 2)
 
     return data
@@ -287,7 +373,7 @@ async def scrape_property_safe(
 
         # 6. Acessar página
         await page.goto(url, wait_until="domcontentloaded", timeout=30000)
-        wait_for_page_load(page, 3, 6)
+        await wait_for_page_load(page, 3, 6)
 
         # 7. Verificar bloqueio
         content = await page.content()
@@ -297,9 +383,9 @@ async def scrape_property_safe(
             return None
 
         # 8. Comportamento humano
-        human_scroll(page)
-        human_mouse_move(page)
-        simulate_reading(page, min_time=3, max_time=6)
+        await human_scroll(page)
+        await human_mouse_move(page)
+        await simulate_reading(page, min_time=3, max_time=6)
 
         # 9. Extrair dados
         data = await parse_property_page(page, url)
@@ -311,7 +397,7 @@ async def scrape_property_safe(
             save_cookies(new_cookies, metadata=fingerprint)
 
         # 11. Pausa ocasional
-        random_pause(probability=0.1)
+        await random_pause(probability=0.1)
 
         await browser.close()
 

@@ -13,6 +13,8 @@ from playwright.async_api import async_playwright
 sys.path.append(os.path.dirname(__file__))
 from cookie_manager import load_cookies
 from property_saver import insert_property
+from scraper_production import parse_property_page
+from dataclasses import asdict
 
 # URLs de teste (URLs reais do banco)
 TEST_URLS = [
@@ -61,36 +63,21 @@ async def quick_scrape():
 
             try:
                 await page.goto(url, wait_until='domcontentloaded', timeout=30000)
-                await asyncio.sleep(2)
+                await asyncio.sleep(3)
 
-                # Extrair dados básicos
-                title = None
-                price = None
+                # Usar função otimizada de parsing
+                data = await parse_property_page(page, url)
+                property_data = asdict(data)
 
-                # Título
-                title_elem = await page.query_selector("h1, [class*='titulo']")
-                if title_elem:
-                    title = await title_elem.text_content()
-                    title = title.strip() if title else None
-
-                # Preço
-                price_elem = await page.query_selector("[class*='preco'], [class*='valor']")
-                if price_elem:
-                    price_text = await price_elem.text_content()
-                    print(f"  💰 Preço: {price_text}")
-
-                # Criar registro mínimo
-                property_data = {
-                    'source_url': url,
-                    'title': title,
-                    'city': 'Campo Grande',
-                    'state': 'MS'
-                }
+                # Mostrar alguns campos
+                print(f"  🏠 Título: {data.title[:60] if data.title else 'N/A'}...")
+                print(f"  💰 Preço: R$ {data.price_brl:,.2f}" if data.price_brl else "  💰 Preço: N/A")
+                print(f"  📐 Área: {data.area_total_m2}m² (total)" if data.area_total_m2 else "  📐 Área: N/A")
+                print(f"  🛏️  Quartos: {data.bedrooms}" if data.bedrooms else "  🛏️  Quartos: N/A")
+                print(f"  🚗 Vagas: {data.parking_spaces}" if data.parking_spaces else "  🚗 Vagas: N/A")
 
                 # Salvar no banco
                 prop_id = insert_property(property_data)
-
-                print(f"  ✅ Título: {title[:60] if title else 'N/A'}...")
                 print(f"  ✅ Salvo no banco: {prop_id}")
 
                 results.append(property_data)

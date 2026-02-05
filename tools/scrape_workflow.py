@@ -90,10 +90,10 @@ async def discover_property_urls(
             current_url = f"{search_url}&pagina={page_num}" if page_num > 1 else search_url
 
             await page.goto(current_url, wait_until="domcontentloaded", timeout=30000)
-            wait_for_page_load(page, 3, 5)
+            await wait_for_page_load(page, 3, 5)
 
             # Scroll para carregar lazy loading
-            human_scroll(page)
+            await human_scroll(page)
 
             # Extrair URLs de imóveis
             links = await page.query_selector_all("a[href*='/imovel/']")
