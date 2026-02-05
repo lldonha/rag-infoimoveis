@@ -1,189 +1,369 @@
 # 📋 TODO - Sistema RAG InfoImóveis
 
-**Última atualização:** 2026-02-04
+**Última atualização:** 2026-02-05
 **Prioridade:** 🔴 Alta | 🟡 Média | 🟢 Baixa
 
 ---
 
 ## 🔴 CRÍTICO - Fazer AGORA
 
-### 1. Corrigir `scraper_production.py` (Funções Assíncronas)
-**Problema:** Travamento nas funções de comportamento humano
+### 1. Validar Playwright Stealth em Batch ⏳
+**Status:** Implementado, aguardando teste em escala
 
-**Arquivo:** [tools/human_behavior.py](tools/human_behavior.py)
+**Comandos:**
+```bash
+# Teste com 5 URLs
+python tools/quick_test_stealth.py
 
-**Mudanças necessárias:**
-```python
-# human_scroll()
-- def human_scroll(page, duration: float = None):
-+ async def human_scroll(page, duration: float = None):
-    # ...
--   time.sleep(step_duration + random.uniform(-0.2, 0.3))
-+   await asyncio.sleep(step_duration + random.uniform(-0.2, 0.3))
-
-# human_mouse_move()
-- def human_mouse_move(page, num_moves: int = None):
-+ async def human_mouse_move(page, num_moves: int = None):
-    # ...
--   time.sleep(random.uniform(0.3, 0.8))
-+   await asyncio.sleep(random.uniform(0.3, 0.8))
-
-# simulate_reading()
-- def simulate_reading(page, min_time: float = 5, max_time: float = 10):
-+ async def simulate_reading(page, min_time: float = 5, max_time: float = 10):
--   time.sleep(read_time)
-+   await asyncio.sleep(read_time)
-
-# random_pause()
-- def random_pause(probability: float = 0.1):
-+ async def random_pause(probability: float = 0.1):
-    if random.random() < probability:
--       time.sleep(random.uniform(3, 8))
-+       await asyncio.sleep(random.uniform(3, 8))
-
-# wait_for_page_load()
-- def wait_for_page_load(page, min_time: float = 2, max_time: float = 5):
-+ async def wait_for_page_load(page, min_time: float = 2, max_time: float = 5):
--   time.sleep(random.uniform(min_time, max_time))
-+   await asyncio.sleep(random.uniform(min_time, max_time))
+# Meta: 4/5 (80%) sucesso
+# Se PASS → Integrar em production
+# Se FAIL → Instalar Crawl4AI
 ```
 
-**Depois em `scraper_production.py`:**
+**Critérios de validação:**
+- [ ] Taxa de sucesso >80% (4/5 URLs)
+- [ ] headless=True funcional
+- [ ] Sem bloqueios Cloudflare ("Just a moment")
+- [ ] Completude >0% (idealmente >65%)
+
+**Arquivo:** [tools/quick_test_stealth.py](tools/quick_test_stealth.py)
+
+---
+
+### 2. Corrigir Bug: Completude 0% 🐛
+**Problema:** Parser retorna dados mas completeness=0
+
+**Evidência:**
+```
+✅ SUCESSO
+   Título: Linda casa de esquina em frente a praça...
+   Completude: 0%
+```
+
+**Investigação necessária:**
+- [ ] Verificar como `completeness` é calculado em PropertyData
+- [ ] Confirmar se campos estão sendo populados
+- [ ] Testar com múltiplos imóveis
+
+**Arquivo:** [tools/scraper_production.py](tools/scraper_production.py) (linha ~119-321)
+
+---
+
+### 3. Validar Discovery Filtrado ⏳
+**Status:** Implementado, precisa teste
+
+**Teste do preset do usuário:**
+```bash
+python -c "
+import asyncio
+from tools.discovery_filtered import discover_by_preset
+
+async def main():
+    # Busca exata do usuário:
+    # Casa térrea, Segredo, R$ 100k-200k
+    urls = await discover_by_preset('segredo_100_200k', max_pages=2)
+    print(f'\nTotal: {len(urls)} imóveis encontrados')
+    for i, url in enumerate(urls[:5], 1):
+        print(f'  {i}. {url}')
+
+asyncio.run(main())
+"
+```
+
+**Critérios de validação:**
+- [ ] Descobre >20 imóveis
+- [ ] URLs corretas (padrão /imovel/venda-*)
+- [ ] Sem timeout (30s)
+- [ ] Preset 'segredo_100_200k' funciona
+
+**Arquivo:** [tools/discovery_filtered.py](tools/discovery_filtered.py)
+
+---
+
+## 🔴 Alta Prioridade - Hoje/Amanhã
+
+### 4. Integrar Stealth em Production (SE teste #1 passar)
+**Objetivo:** Substituir browser padrão por stealth browser
+
+**Mudanças em [scraper_production.py](tools/scraper_production.py):**
 ```python
-# Linha 300
-- human_scroll(page)
-+ await human_scroll(page)
+# ANTES:
+from playwright.async_api import async_playwright
 
-# Linha 301
-- human_mouse_move(page)
-+ await human_mouse_move(page)
+async def create_browser():
+    playwright = await async_playwright().start()
+    browser = await playwright.chromium.launch(headless=False)  # ⚠️ headless=False
+    # ...
 
-# Linha 302
-- simulate_reading(page, min_time=3, max_time=6)
-+ await simulate_reading(page, min_time=3, max_time=6)
+# DEPOIS:
+from scraper_stealth import create_stealth_browser
 
-# Linha 290
-- wait_for_page_load(page, 3, 6)
-+ await wait_for_page_load(page, 3, 6)
+async def scrape_property(url: str, use_stealth=True):
+    if use_stealth:
+        playwright, browser, context, page = await create_stealth_browser(
+            headless=True  # ✅ Agora funciona!
+        )
+    else:
+        # Fallback para método antigo
+        # ...
+```
 
-# Linha 314
-- random_pause(probability=0.1)
-+ await random_pause(probability=0.1)
+**Teste:**
+```bash
+python tools/scraper_production.py --limit 50 --strategy stealth
 ```
 
 ---
 
-## 🔴 Alta Prioridade - Esta Semana
+### 5. Workflow Completo: Discovery → Scraping (1h)
+**Objetivo:** Pipeline end-to-end funcional
 
-### 2. Mapear Seletores HTML Corretos
-**Objetivo:** Aumentar completude de 15% → 70%+
+**Fluxo:**
+```
+1. Discovery Filtrado → Lista de 50-100 URLs
+   ↓
+2. Scraping com Stealth → Dados extraídos
+   ↓
+3. Save PostgreSQL → Banco populado
+   ↓
+4. Métricas Dashboard → Validação
+```
 
-**Tarefas:**
-- [ ] Inspecionar HTML de imóveis reais (usar `inspect_page.py`)
-- [ ] Mapear seletores para todos os campos
-- [ ] Atualizar `parse_property_page()` em `scraper_production.py`
-- [ ] Testar e validar parsing
+**Comando:**
+```bash
+python tools/scrape_workflow.py --preset segredo_100_200k --max-pages 5 --use-stealth
+```
 
-### 3. Implementar Discovery de URLs
-**Problema:** URLs genéricas de listagem retornam 404
-
-**Opções:**
-- [ ] Sitemap XML
-- [ ] API interna
-- [ ] Scraping incremental
-- [ ] Usar `property_urls.json` como seed
-
-### 4. Testar Scraping em Escala (50 Imóveis)
-- [ ] Corrigir async functions
-- [ ] Executar workflow com 50 imóveis
-- [ ] Validar métricas (sucesso >90%, bloqueio <5%)
-
----
-
-## 🟡 Média Prioridade - Próximas 2 Semanas
-
-### 5. Rotina de Coleta Diária Automatizada
-- [ ] Agendamento (cron/Task Scheduler)
-- [ ] Janelas de execução (madrugada, almoço)
-- [ ] Renovação automática de cookies
-- [ ] Logs e alertas
-
-### 6. Sistema de Métricas e Monitoramento
-- [ ] Dashboard em tempo real
-- [ ] Alertas de bloqueio
-- [ ] Logs estruturados
-
-### 7. Validação de Qualidade dos Dados
-- [ ] Schema validation
-- [ ] Detecção de duplicatas
-- [ ] Limpeza e normalização
-
-### 8. Integração com n8n
-- [ ] Workflow de execução agendada
-- [ ] Notificações (Telegram/Email)
-- [ ] Dashboard de métricas
+**Validação:**
+- [ ] 50+ imóveis descobertos
+- [ ] >90% taxa de sucesso no scraping
+- [ ] >70% completude média
+- [ ] <30min tempo total
+- [ ] Dados salvos no PostgreSQL
 
 ---
 
-## 🟢 Baixa Prioridade - Futuro (1+ mês)
+## 🟡 Média Prioridade - Esta Semana
 
-### 9. Sistema RAG Completo
-- [ ] Embeddings e vector search
-- [ ] Interface de consulta (chat)
+### 6. Cookie Manager Automático
+**Objetivo:** Auto-renovação de cookies a cada 30min
 
-### 10. Features Avançadas
-- [ ] Análise de preços
-- [ ] Tendências de mercado
-- [ ] Geolocalização
+**Criar:** [tools/cookie_manager.py](tools/cookie_manager.py)
 
-### 11. Deploy em Produção
-- [ ] Dockerize completo
-- [ ] CI/CD
-- [ ] Backup automático
+```python
+class CookieManager:
+    def __init__(self, cookie_file=".tmp/cookies.json"):
+        self.cookie_file = Path(cookie_file)
+        self.max_age = 30 * 60  # 30 minutos
+
+    async def are_valid(self) -> bool:
+        """Verifica se cookies ainda são válidos"""
+        if not self.cookie_file.exists():
+            return False
+        age = time.time() - self.cookie_file.stat().st_mtime
+        return age < self.max_age
+
+    async def renew_if_needed(self, page):
+        """Renova cookies se expirados"""
+        if self.are_valid():
+            await self.load_cookies(page)
+            return
+
+        # Abrir página, aguardar challenge
+        await page.goto("https://www.infoimoveis.com.br")
+        await page.wait_for_load_state("networkidle")
+
+        # Salvar novos cookies
+        cookies = await page.context.cookies()
+        self.cookie_file.write_text(json.dumps(cookies, indent=2))
+```
+
+**Integração:**
+```python
+# Em scraper_production.py
+cookie_mgr = CookieManager()
+await cookie_mgr.renew_if_needed(page)
+```
+
+---
+
+### 7. Cloudflare Detector
+**Objetivo:** Detectar bloqueios automaticamente
+
+**Criar:** [tools/cloudflare_detector.py](tools/cloudflare_detector.py)
+
+```python
+async def is_blocked(page) -> bool:
+    """Detecta se foi bloqueado pelo Cloudflare"""
+    title = await page.title()
+    html = await page.content()
+
+    blocked_signals = [
+        "just a moment" in title.lower(),
+        "cloudflare" in html[:1000].lower(),
+        "cf-wrapper" in html[:1000],
+        len(html) < 20000,  # HTML muito pequeno = challenge
+    ]
+
+    return any(blocked_signals)
+```
+
+**Uso:**
+```python
+if await is_blocked(page):
+    raise CloudflareBlockedError()
+```
+
+---
+
+### 8. Crawl4AI como Fallback (SE Stealth < 80%)
+**Objetivo:** Implementar segunda camada anti-Cloudflare
+
+**Setup:**
+```bash
+pip install crawl4ai
+crawl4ai-setup
+playwright install chromium
+```
+
+**Criar:** [tools/scraper_crawl4ai.py](tools/scraper_crawl4ai.py)
+
+**Features:**
+- Undetected browser mode (patches profundos)
+- Session management (cookies persistentes)
+- 95%+ taxa de sucesso esperada
+
+---
+
+### 9. Rotina de Coleta Diária Automatizada
+**Objetivo:** Scraping autônomo todos os dias
+
+**Janelas seguras:**
+- ✅ 02:00 - 06:00 (madrugada - menos bloqueios)
+- ✅ 12:00 - 14:00 (almoço)
+- ❌ 08:00 - 11:00, 14:00 - 18:00 (evitar)
+
+**Windows (Task Scheduler):**
+```powershell
+# Criar tarefa agendada para 03:00
+schtasks /create /tn "RAG InfoImoveis" /tr "python e:\rag_infoimoeveis\tools\scrape_workflow.py --daily" /sc daily /st 03:00
+```
+
+**Linux/Mac (cron):**
+```bash
+# Adicionar ao crontab
+0 3 * * * cd /e/rag_infoimoeveis && python tools/scrape_workflow.py --daily
+```
+
+---
+
+## 🟢 Baixa Prioridade - Próximas Semanas
+
+### 10. Sistema Multi-estratégia
+**Objetivo:** Fallback automático entre estratégias
+
+**Criar:** [tools/scraper_engine.py](tools/scraper_engine.py)
+
+```python
+class ScraperEngine:
+    strategies = [
+        PlaywrightStealth,   # Rápido, 80-90% sucesso
+        Crawl4AI,            # Médio, 95%+ sucesso
+        ManualBypass,        # Lento, 100% sucesso
+    ]
+
+    async def scrape_with_fallback(self, url):
+        for strategy in self.strategies:
+            try:
+                return await strategy.scrape(url)
+            except CloudflareBlockError:
+                logger.warning(f"{strategy} bloqueado, tentando próximo...")
+                continue
+        raise AllStrategiesFailedError()
+```
+
+---
+
+### 11. Sistema de Métricas e Monitoramento
+**Features:**
+- Dashboard em tempo real
+- Alertas de bloqueio (Telegram/Email)
+- Logs estruturados
+- Gráficos de performance
+
+**Tools:**
+- Grafana + Prometheus
+- n8n para alertas
+- PostgreSQL para métricas históricas
+
+---
+
+### 12. Sistema RAG Completo
+**Fase futura (depois de 1000+ imóveis):**
+- [ ] Embeddings (OpenAI/Cohere)
+- [ ] Vector search (pgvector)
+- [ ] Interface de chat
+- [ ] Query inteligente
 
 ---
 
 ## 🐛 Bugs Conhecidos
 
-| ID | Descrição | Prioridade | Arquivo |
-|----|-----------|------------|---------|
-| BUG-001 | Funções síncronas em contexto async | 🔴 Crítico | `human_behavior.py` |
-| BUG-002 | URLs de listagem retornam 404 | 🔴 Alta | Discovery workflow |
-| BUG-003 | Completude baixa (15%) | 🟡 Média | `scraper_production.py` |
-| BUG-004 | Título extraído incorreto | 🟡 Média | Seletores HTML |
+| ID | Descrição | Prioridade | Arquivo | Status |
+|----|-----------|------------|---------|--------|
+| BUG-001 | Funções síncronas em async | 🔴 | `human_behavior.py` | ✅ RESOLVIDO |
+| BUG-002 | Completude 0% | 🔴 | `scraper_production.py` | ⏳ INVESTIGAR |
+| BUG-003 | Discovery timeout 30s | 🟡 | `discovery_filtered.py` | ⏳ INVESTIGAR |
+| BUG-004 | URLs de listagem 404 | 🟡 | Discovery workflow | ✅ RESOLVIDO |
 
 ---
 
-## ✅ Concluído Recentemente
+## ✅ Concluído Recentemente (2026-02-05)
 
-- [x] Playwright instalado
-- [x] Bypass Cloudflare manual
-- [x] Cookies persistentes funcionando
-- [x] Quick test scraper criado
-- [x] 5 imóveis coletados com sucesso
-- [x] PostgreSQL integrado
-- [x] Metrics dashboard básico
-- [x] Page inspector para debug
+- [x] Pesquisar alternativas anti-Cloudflare (Context7 MCP) ✅
+- [x] Implementar playwright-stealth ✅
+- [x] Criar `tools/scraper_stealth.py` ✅
+- [x] Criar `tools/quick_test_stealth.py` ✅
+- [x] Validar stealth funcionando (1 URL) ✅
+- [x] Criar sistema de discovery filtrado ✅
+- [x] Implementar presets de busca ✅
+- [x] Atualizar requirements.txt ✅
+- [x] Documentar progresso (PROGRESS_2026-02-05.md) ✅
+
+### Concluído Anteriormente (2026-02-04)
+
+- [x] BUG-001: Funções assíncronas corrigidas ✅
+- [x] Mapeamento de seletores HTML ✅
+- [x] Atualizar `parse_property_page()` ✅
+- [x] Completude 15% → 65% (+333%) ✅
 
 ---
 
 ## 📊 Metas Semanais
 
-### Semana 1 (Atual - 2026-02-04)
+### Semana 1 (2026-02-04 a 2026-02-11)
 - [x] Setup e validação inicial (5 imóveis) ✅
-- [ ] Corrigir async functions ⏳
+- [x] Corrigir async functions ✅
+- [x] Pesquisar anti-Cloudflare ✅
+- [x] Implementar playwright-stealth ✅
+- [ ] Validar stealth (5 URLs batch) ⏳
 - [ ] Testar com 50 imóveis ⏳
+- [ ] Corrigir completude 0% ⏳
 
-### Semana 2
-- [ ] Completude > 70%
+### Semana 2 (2026-02-11 a 2026-02-18)
+- [ ] Discovery + Scraping integrados
 - [ ] 200 imóveis no banco
+- [ ] Completude >70%
+- [ ] Cookie manager implementado
 
-### Semana 3
+### Semana 3 (2026-02-18 a 2026-02-25)
 - [ ] 500 imóveis no banco
 - [ ] Rotina diária automatizada
+- [ ] Monitoramento implementado
 
-### Semana 4
+### Semana 4 (2026-02-25 a 2026-03-04)
 - [ ] 1000+ imóveis no banco
+- [ ] Sistema estável e autônomo
 - [ ] Preparar para fase RAG
 
 ---
@@ -196,8 +376,46 @@
 - Taxa de sucesso: >95%
 - Atualização diária: 200-400 imóveis novos
 - Sistema autônomo e resiliente
+- Zero bloqueios Cloudflare
 
 ---
 
-**Última revisão:** 2026-02-04
-**Próxima revisão:** 2026-02-07
+## 📚 Recursos Criados
+
+### Documentação
+- `PROGRESS_2026-02-05.md` - Relatório detalhado de hoje
+- `PROGRESS_2026-02-04.md` - Relatório anterior
+- `CONTINUAR_AMANHA.md` - Guia de continuação
+- `.tmp/SELECTORS_MAP.md` - Seletores HTML validados
+- `.claude/plans/sprightly-munching-cerf.md` - Plano completo anti-Cloudflare
+
+### Scripts de Scraping
+- `tools/scraper_stealth.py` - Browser com playwright-stealth
+- `tools/quick_test_stealth.py` - Teste batch (5 URLs)
+- `tools/discovery_filtered.py` - Discovery com filtros (região, preço, tipo)
+
+### Scripts de Suporte
+- `tools/scraper_production.py` - Scraper principal
+- `tools/scrape_workflow.py` - Workflow completo
+- `tools/metrics_dashboard.py` - Dashboard de métricas
+- `tools/inspect_page.py` - Debug de páginas
+
+---
+
+## 🔗 Links Úteis
+
+### Ferramentas Pesquisadas
+- **Crawl4AI:** https://github.com/unclecode/crawl4ai (59.5k ⭐)
+- **playwright-stealth:** https://github.com/AtuboDad/playwright_stealth (883 ⭐)
+- **undetected-chromedriver:** https://github.com/ultrafunkamsterdam/undetected-chromedriver (12.3k ⭐)
+- **HasData/cloudflare-bypass:** https://github.com/HasData/cloudflare-bypass (exemplos práticos)
+
+### Documentação
+- Crawl4AI Docs: https://docs.crawl4ai.com/advanced/undetected-browser/
+- Playwright Docs: https://playwright.dev/python/
+
+---
+
+**Última revisão:** 2026-02-05 05:40
+**Próxima revisão:** 2026-02-06 08:00
+**Status:** 🟢 Stealth implementado! Testando em batch...

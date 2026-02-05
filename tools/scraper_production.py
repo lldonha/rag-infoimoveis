@@ -59,6 +59,68 @@ class PropertyData:
     advertiser_name: Optional[str] = None
     advertiser_phone: Optional[str] = None
 
+    @property
+    def completeness(self) -> float:
+        """
+        Calcula score de completude dos dados (0.0 a 1.0)
+        Mesma lógica de property_saver.calculate_completeness()
+        """
+        weights = {
+            'title': 2,
+            'description': 2,
+            'property_type': 2,
+            'transaction_type': 2,
+            'city': 1,
+            'neighborhood': 2,
+            'area_total_m2': 2,
+            'area_built_m2': 1,
+            'bedrooms': 1,
+            'bathrooms': 1,
+            'price_brl': 3,  # Preço é crítico
+            'images': 1,
+        }
+
+        total_weight = sum(weights.values())
+        achieved_weight = 0
+
+        for field, weight in weights.items():
+            value = getattr(self, field, None)
+            if value is not None and value != '' and value != []:
+                achieved_weight += weight
+
+        return round(achieved_weight / total_weight, 2)
+
+    def to_dict(self) -> Dict:
+        """Converte para dicionário com completeness incluído"""
+        result = {
+            'source_url': self.source_url,
+            'title': self.title,
+            'description': self.description,
+            'property_type': self.property_type,
+            'property_use': self.property_use,
+            'transaction_type': self.transaction_type,
+            'neighborhood': self.neighborhood,
+            'city': self.city,
+            'state': self.state,
+            'address': self.address,
+            'area_total_m2': self.area_total_m2,
+            'area_built_m2': self.area_built_m2,
+            'bedrooms': self.bedrooms,
+            'bathrooms': self.bathrooms,
+            'suites': self.suites,
+            'parking_spaces': self.parking_spaces,
+            'price_brl': self.price_brl,
+            'price_per_m2': self.price_per_m2,
+            'condominium_fee_brl': self.condominium_fee_brl,
+            'iptu_annual_brl': self.iptu_annual_brl,
+            'features': self.features,
+            'images': self.images,
+            'advertiser_name': self.advertiser_name,
+            'advertiser_phone': self.advertiser_phone,
+            'completeness': int(self.completeness * 100),  # Retorna como %
+        }
+        return result
+
 
 def parse_price(text: str) -> Optional[float]:
     """Converte texto de preço para float"""
