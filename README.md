@@ -1,90 +1,65 @@
-# RAG InfoImóveis - Sistema de Avaliação Imobiliária
+# 🏠 RAG InfoImóveis - Sistema de Scraping e Análise Imobiliária
 
-Sistema RAG (Retrieval-Augmented Generation) para avaliação de imóveis em Campo Grande-MS usando dados do infoimoveis.com.br.
+**Sistema de scraping inteligente com análise RAG para mercado imobiliário de Campo Grande/MS**
 
 ---
 
-## 🎯 Status do Projeto
+## 🎯 Objetivo Principal
 
-| Etapa | Status | Progresso |
-|-------|--------|-----------|
-| 0.1-0.4 Scraping básico | ✅ Concluído | 100% |
-| 0.5 PostgreSQL + pgvector | ✅ Concluído | 100% |
-| 0.6 Pipeline Embeddings | ✅ Concluído | 100% |
-| 0.7 Sistema RAG | ✅ Concluído | 100% |
-| 0.8 Scraping Produção | ✅ Concluído | 100% |
-| **0.9 Playwright Stealth** | **✅ Concluído** | **100%** |
-| 1.0 Workflow Completo | 🔜 Próximo | 20% |
-| 1.1 API REST | 📋 Planejado | 0% |
-| 1.2 Integração n8n | 📋 Planejado | 0% |
+Construir dataset de qualidade (85%+ completude) com:
+1. **Dados estruturados precisos** (preço, área, quartos, características)
+2. **Imagens locais** com análise visual (conservação, idade aparente)
+3. **Histórico temporal** para tracking mensal do mercado
+4. **Zero bloqueios** via scraping segmentado
 
-### 🎯 Métricas Atuais (v0.9)
+---
 
-| Métrica | Valor | Status |
-|---------|-------|--------|
-| **Cloudflare bypass** | 100% | ✅ |
-| **Completude média** | 85% | ✅ |
-| **headless=True** | Funcional | ✅ |
-| **Discovery** | 24 URLs/busca | ✅ |
+## 📋 Status Atual
+
+### ✅ O Que Funciona (100%)
+- ✅ Scraping com Playwright Stealth (34 imóveis testados, 0 bloqueios)
+- ✅ PostgreSQL + pgvector (29 imóveis salvos)
+- ✅ Rate limiting inteligente (6-12s delays)
+- ✅ Export para Excel formatado
+- ✅ 7 camadas anti-bloqueio
+
+### 🟡 Em Desenvolvimento - FASE 1
+**Segmentação Inteligente do Scraping**
+- Dividir scraping por região/preço (10 segmentos)
+- Sessões curtas (20-30min) ao invés de longas (4-6h)
+- Delay entre segmentos para evitar bloqueios
+
+📄 **Ver:** [FASE_1_SEGMENTACAO.md](FASE_1_SEGMENTACAO.md)
+
+### 🔜 Próximas Fases
+- **FASE 2:** Parser preciso (55% → 85% completude)
+- **FASE 3:** Download + análise visual de imagens
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Configurar Banco de Dados
-
+### 1. Verificar PostgreSQL
 ```bash
-# Subir PostgreSQL + pgvector
-docker-compose up -d postgres
-
-# Verificar status
 docker ps | grep postgres
 ```
 
-### 2. Popular com Dados Reais (STEALTH MODE 🎯)
-
+### 2. Scraping Segmentado (Recomendado)
 ```bash
-# Teste rápido (1 URL)
-python -c "import asyncio; from tools.scraper_stealth import test_stealth_single; asyncio.run(test_stealth_single('https://www.infoimoveis.com.br/imovel/venda-casa-terrea-giocondo-orsi/557442', headless=True))"
+# Testar 1 segmento (10 imóveis, ~10min)
+python tools/scraper_by_segments.py --segment segredo_100_200k --limit 10
 
-# Teste discovery (busca por região/preço)
-python tools/test_discovery.py
+# Batch completo (~690 imóveis, ~1 dia)
+python tools/scraper_by_segments.py --all --save-to-db
+```
 
-# Ver dashboard
+### 3. Ver Resultados
+```bash
+# Dashboard de métricas
 python tools/metrics_dashboard.py
-```
 
-📖 **Guias completos:**
-- [PROGRESS_2026-02-05.md](PROGRESS_2026-02-05.md) - Relatório dia 2
-- [CONTINUAR_2026-02-06.md](CONTINUAR_2026-02-06.md) - Próximos passos
-- [tools/README_ESTRUTURA.md](tools/README_ESTRUTURA.md) - Estrutura código
-
-### 3. Obter API Keys (FREE) - Opcional
-
-Siga as instruções em [.env.INSTRUCOES](.env.INSTRUCOES):
-
-- **Cohere** (embeddings): https://dashboard.cohere.com/
-- **Groq** (LLM): https://console.groq.com/
-- **Mistral** (backup): https://console.mistral.ai/
-
-Depois, atualize `.env`:
-```bash
-COHERE_API_KEY=sua_key_aqui
-GROQ_API_KEY=sua_key_aqui
-MISTRAL_API_KEY=sua_key_aqui
-```
-
-### 4. Testar Pipeline RAG (Opcional)
-
-```bash
-# Teste PostgreSQL + pgvector
-python tools/test_05_pgvector.py
-
-# Teste embeddings
-python tools/test_06_embeddings.py
-
-# Teste sistema RAG completo
-python tools/test_07_rag_system.py
+# Export Excel
+python tools/export_to_excel.py
 ```
 
 ---
@@ -93,263 +68,166 @@ python tools/test_07_rag_system.py
 
 ```
 rag_infoimoeveis/
-├── tools/                      # Scripts Python
-│   ├── scraper_production.py          # ✅ Scraper de produção
-│   ├── scrape_workflow.py             # ✅ Orquestrador completo
-│   ├── property_saver.py              # ✅ Inserção PostgreSQL
-│   ├── metrics_dashboard.py           # ✅ Dashboard de métricas
-│   ├── rate_limiter.py                # ✅ Controle de taxa
-│   ├── cookie_manager.py              # ✅ Gestão de cookies
-│   ├── fingerprint_rotator.py         # ✅ Rotação de identidade
-│   ├── human_behavior.py              # ✅ Simulação humana
-│   ├── test_05_pgvector.py            # ✅ Teste PostgreSQL
-│   ├── test_06_embeddings.py          # ✅ Teste embeddings
-│   └── test_07_rag_system.py          # ✅ Teste RAG completo
+├── tools/                    # Scripts Python
+│   ├── scraper_production.py      # Scraper atual (100% funcional)
+│   ├── scraper_by_segments.py     # 🟡 Em desenvolvimento (Fase 1)
+│   ├── property_saver.py          # Salvamento PostgreSQL
+│   └── export_to_excel.py         # Export formatado
 │
-├── workflows/                  # SOPs e documentação
-│   ├── scraping_producao.md   # ✅ Workflow de produção
-│   ├── scraping.md            # Documentação scraping
-│   └── anti-bloqueio.md       # 🔥 CRÍTICO: Plano anti-bloqueio
+├── sql/                      # Schemas PostgreSQL
+│   └── schema.sql                 # Tabelas + pgvector
 │
-├── sql/
-│   └── schema.sql             # ✅ Schema PostgreSQL aplicado
+├── .tmp/                     # Dados temporários
+│   ├── *.html                     # HTMLs scrapados
+│   └── *.json                     # Resultados intermediários
 │
-├── n8n/                       # Workflows n8n (futuro)
+├── .data/                    # Dados permanentes (futuro)
+│   └── images/                    # Imagens baixadas (Fase 3)
 │
-├── .tmp/                      # Dados temporários
-│   ├── cookies.json           # Cookies Cloudflare
-│   ├── property_urls.json     # 16 URLs coletadas
-│   └── parsed_properties.json # 5 imóveis parseados
+├── worksheet/                # Planilhas de referência
+│   └── Casas - CG COMPLETO acima de 90m.xls
 │
-├── docker-compose.yml         # ✅ PostgreSQL (5433) + n8n
-├── .env                       # ⚠️ Configurar API keys aqui
-├── .env.INSTRUCOES           # 📖 Como obter API keys
-├── PLANO_RAG_INFOIMOVEIS.md  # Plano completo
-└── PROXIMOS_PASSOS.md        # Roadmap atualizado
+└── docs principais/
+    ├── FASE_1_SEGMENTACAO.md      # 🟡 Plano Fase 1 (atual)
+    ├── PLANO_RAG_INFOIMOVEIS.md   # Plano completo original
+    ├── RESUMO_EXECUTIVO_v0.8.md   # Sistema v0.8
+    ├── RELATORIO_FINAL_2026-02-05.md  # Testes validação
+    └── GUIA_RAPIDO_SCRAPING.md    # Quick start
+
+📋 Plano completo 3 fases: .claude/plans/moonlit-waddling-sun.md
+📦 Docs arquivados: .archive/docs_old/
 ```
 
 ---
 
-## 🗄️ Banco de Dados
+## 🛠️ Stack Técnica
 
-**Host:** localhost
-**Porta:** 5433 (não conflita com outros PostgreSQL)
-**Database:** infoimoveis
-**User:** postgres
-**Password:** infoimoveis2024
+| Componente | Tecnologia | Custo |
+|-----------|-----------|-------|
+| **Scraping** | Playwright + Stealth | $0 |
+| **Banco de Dados** | PostgreSQL 16 + pgvector | $0 |
+| **Análise Visual** | Groq/OpenRouter/Ollama (FREE) | $0 |
+| **LLMs** | Groq/Mistral/Cohere (FREE tier) | $0 |
+| **Embeddings** | Cohere (1000 req/min FREE) | $0 |
 
-**Tabelas:**
-- `properties` - Imóveis coletados
-- `property_embeddings` - Vetores para RAG (1024 dims)
-- `scrape_jobs` - Fila de scraping
-- `market_stats` - Cache de estatísticas
-
-**Extensões:**
-- ✅ pgvector 0.8.1
-- ✅ uuid-ossp 1.1
-
----
-
-## 🎓 Stack Tecnológica
-
-### APIs Free Tier
-| API | Modelo | Limite Free | Uso |
-|-----|--------|-------------|-----|
-| **Cohere** | embed-v3 | 1000 calls/min | Embeddings (1024 dims) |
-| **Groq** | llama-3.1-70b | 30 req/min | LLM RAG |
-| **Mistral** | mistral-large | 1M tokens/mês | LLM backup |
-| **Mistral** | pixtral | free tier | OCR (fallback) |
-
-### Infraestrutura
-- PostgreSQL 16 + pgvector (Docker)
-- n8n (Docker) - futuro
-- Playwright (scraping)
-- Python 3.14
-
-**Custo total: $0** (100% free tier + self-hosted)
-
----
-
-## 🔐 Sistema de Scraping em Produção
-
-**Sistema completo com 7 camadas de proteção anti-bloqueio:**
-
-1. ✅ **Rate Limiting:** 5-12s delay, 50/hora, 400/dia
-2. ✅ **Janelas Seguras:** Madrugada (03-06h), Almoço (13-15h), Noite (22-24h)
-3. ✅ **Browser Real:** Headed mode (Cloudflare não detecta)
-4. ✅ **Cookies Persistentes:** 6h TTL, renovação automática
-5. ✅ **Fingerprint Rotation:** UA, viewport, timezone aleatórios
-6. ✅ **Comportamento Humano:** Scroll, mouse, pausas aleatórias
-7. ✅ **Auto-Recovery:** Detecção de bloqueio + pausa automática
-
-**Guias:**
-- 📖 [GUIA_RAPIDO_SCRAPING.md](GUIA_RAPIDO_SCRAPING.md) - Quick start
-- 📖 [workflows/scraping_producao.md](workflows/scraping_producao.md) - Documentação completa
-- 📖 [workflows/anti-bloqueio.md](workflows/anti-bloqueio.md) - Estratégias anti-bloqueio
+**Total:** $0/mês (100% FREE tier)
 
 ---
 
 ## 📊 Dados Coletados
 
-**Campos extraídos do infoimoveis.com.br:**
-- Título, descrição, imagens
-- Tipo (apartamento, casa, terreno, comercial, rural)
-- Uso (residencial, comercial, industrial, agrícola)
-- Transação (venda, aluguel)
-- Localização (cidade, bairro, endereço, estado)
-- Área (total, construída)
-- Características (quartos, banheiros, suítes, vagas)
-- Preços (venda, condomínio, IPTU)
+### Schema Principal (PostgreSQL)
 
-**Formato:** JSON-LD (schema.org) + tabela HTML
+**Tabela `properties`:**
+- ID, título, descrição
+- Tipo, transação, preço
+- Localização (bairro, cidade, endereço)
+- Áreas (total, construída)
+- Cômodos (quartos, banheiros, suítes, vagas)
+- Valores (condomínio, IPTU, R$/m²)
+- Características (array JSONB)
+- Imagens (URLs array JSONB)
+- Anunciante (nome, telefone)
+- Metadata (source_url, scraped_at, completeness_score)
 
----
-
-## 🤖 Sistema RAG (Futuro)
-
-**Agente:** Especialista em avaliação de imóveis em Campo Grande-MS
-
-**Funcionalidades:**
-- Buscar imóveis por critérios (tipo, localização, preço, características)
-- Avaliar valor de mercado (comparação com similares)
-- Analisar preço/m² por bairro
-- Identificar oportunidades (abaixo do mercado)
-- Alertar problemas (preços suspeitos, dados faltantes)
-
-**Segmentação:** Por tipo (residencial, comercial, terreno, rural)
+**Completude Atual:** 55-65% (meta: 85%+ na Fase 2)
 
 ---
 
 ## 🧪 Testes
 
-### Executar Testes Localmente
-
+### Validação Completa
 ```bash
-# Teste 5: PostgreSQL + pgvector
-python tools/test_05_postgres.py
-# Resultado esperado: 4/4 testes passaram ✅
+python tools/test_08_scraping_system.py
+```
 
-# Teste 6: Embeddings (após configurar API keys)
-python tools/test_06_embeddings.py
-# Resultado esperado: 3/3 testes passaram ✅
+### Teste Rápido (1 imóvel)
+```bash
+python tools/test_workflow_quick.py
+```
 
-# Teste 7: RAG Completo (futuro)
-python tools/test_07_rag.py
+### Teste Médio (10 imóveis)
+```bash
+python tools/test_workflow_10_imoveis.py
 ```
 
 ---
 
-## 📝 Logs e Métricas
+## 📈 Roadmap
 
-```python
-# Métricas de scraping
-.tmp/scraping_metrics.json
+### ✅ Concluído (v0.9)
+- [x] Scraping robusto com 7 camadas anti-bloqueio
+- [x] Playwright Stealth funcionando (headless=True)
+- [x] PostgreSQL + pgvector configurado
+- [x] Export Excel formatado
+- [x] Testes validando 100% sucesso (34 imóveis, 0 bloqueios)
 
-# Logs de bloqueio
-.tmp/block_events.log
+### 🟡 Fase 1 - Em Desenvolvimento (Esta Semana)
+- [ ] Implementar `scraper_by_segments.py`
+- [ ] Definir 10 segmentos de mercado CG
+- [ ] Testar com 1 segmento (10 imóveis)
+- [ ] Validar zero bloqueios
 
-# Cookies salvos
-.tmp/cookies.json
+### 🔜 Fase 2 - Parser Preciso (Próxima Semana)
+- [ ] Corrigir extração de bedrooms/bathrooms/features
+- [ ] Implementar fallbacks múltiplos
+- [ ] Validar contra planilha exemplo
+- [ ] Alcançar 85%+ completude
+
+### 🔜 Fase 3 - Análise Visual (Semana 3)
+- [ ] Download local de imagens
+- [ ] Análise com Groq/OpenRouter/Ollama
+- [ ] Scoring de conservação e apelo
+- [ ] Integrar no workflow
+
+---
+
+## 🚨 Troubleshooting
+
+### PostgreSQL não conecta
+```bash
+docker-compose up -d postgres
+docker ps | grep postgres  # Verificar porta 5433
 ```
 
----
+### Bloqueio do Cloudflare
+- Usar modo segmentado: `--segment <nome>`
+- Aumentar delays: `--segment-delay 7200`
+- Verificar cookies em `.tmp/cookies.json`
 
-## 🔧 Troubleshooting
-
-### Erro: "Port 5432 already allocated"
-**Solução:** Projeto usa porta 5433 (não conflita)
-
-### Erro: "Cohere API key not configured"
-**Solução:** Atualizar `.env` com API key válida
-
-### Erro: "HTTP 403 Forbidden"
-**Solução:** Usar browser headed mode (headless=False)
-
-### Erro: "HTTP 429 Too Many Requests"
-**Solução:** Aumentar delays entre requests (8-15s)
-
-### Erro: "Cloudflare challenge"
-**Solução:** Aguardar 20s após page.goto(), salvar cookies
-
----
-
-## 🚨 Limites e Rate Limiting
-
-| Parâmetro | Valor Recomendado | Crítico? |
-|-----------|-------------------|----------|
-| Delay entre requests | 5-12 segundos | ⚠️ SIM |
-| Máximo por hora | 50 requests | ⚠️ SIM |
-| Máximo por dia | 400 requests | ⚠️ SIM |
-| Janelas de scraping | 03-06h, 13-15h, 22-24h | 🟡 ALTO |
-| Renovação de cookies | A cada 6 horas | 🟡 ALTO |
-
-**Não respeitar = IP bloqueado por Cloudflare**
+### Completude baixa (<65%)
+- Ver relatório: `python tools/metrics_dashboard.py`
+- Aguardar Fase 2 (melhorias no parser)
 
 ---
 
 ## 📚 Documentação Completa
 
-| Arquivo | Descrição |
-|---------|-----------|
-| [PLANO_RAG_INFOIMOVEIS.md](PLANO_RAG_INFOIMOVEIS.md) | Plano técnico completo |
-| [PROXIMOS_PASSOS.md](PROXIMOS_PASSOS.md) | Roadmap atualizado |
-| [workflows/scraping.md](workflows/scraping.md) | SOP de scraping |
-| [workflows/anti-bloqueio.md](workflows/anti-bloqueio.md) | 🔥 Estratégia anti-bloqueio |
-| [.env.INSTRUCOES](.env.INSTRUCOES) | Como obter API keys |
+| Arquivo | Conteúdo |
+|---------|----------|
+| [FASE_1_SEGMENTACAO.md](FASE_1_SEGMENTACAO.md) | 🟡 Plano Fase 1 (atual) |
+| [PLANO_RAG_INFOIMOVEIS.md](PLANO_RAG_INFOIMOVEIS.md) | Plano original completo |
+| [RESUMO_EXECUTIVO_v0.8.md](RESUMO_EXECUTIVO_v0.8.md) | Sistema v0.8 (validado) |
+| [RELATORIO_FINAL_2026-02-05.md](RELATORIO_FINAL_2026-02-05.md) | Testes 100% sucesso |
+| [GUIA_RAPIDO_SCRAPING.md](GUIA_RAPIDO_SCRAPING.md) | Quick start scraping |
 
 ---
 
-## 🎯 Próximos Passos
+## 🤝 Desenvolvido com WAT Framework
 
-1. ✅ ~~Obter API keys (Cohere, Groq, Mistral)~~
-2. ✅ ~~Testar pipeline de embeddings~~
-3. ✅ ~~Implementar sistema RAG completo~~
-4. ✅ ~~Implementar scraper de produção com proteções~~
-5. 🔜 **PRÓXIMO:** Popular banco com 1000+ imóveis reais
-6. 📋 Criar API REST para consultas
-7. 📋 Migrar para workflow n8n (automação)
-
-Ver detalhes em [PROXIMOS_PASSOS.md](PROXIMOS_PASSOS.md)
+**Workflows, Agents, Tools** - Separação entre reasoning (AI) e execution (código).
 
 ---
 
 ## 📞 Suporte
 
-**Documentação:** Ler MDs na raiz do projeto
-**Logs:** `.tmp/` para debug
-**Schema SQL:** `sql/schema.sql`
-**Tests:** `tools/test_*.py`
+- **Fase 1 (atual):** Ver [FASE_1_SEGMENTACAO.md](FASE_1_SEGMENTACAO.md)
+- **Troubleshooting:** Seção acima
+- **Arquitetura:** [PLANO_RAG_INFOIMOVEIS.md](PLANO_RAG_INFOIMOVEIS.md)
 
 ---
 
----
-
-## 🆕 Novidades da v0.8.0
-
-**Sistema de Scraping em Produção:**
-
-✨ **Novos Scripts:**
-- `scraper_production.py` - Scraper com todas as proteções
-- `scrape_workflow.py` - Orquestrador completo (discovery → scraping)
-- `property_saver.py` - Inserção automática no PostgreSQL
-- `metrics_dashboard.py` - Dashboard de monitoramento
-
-🛡️ **Proteções Anti-Bloqueio:**
-- Rate limiter inteligente (50/hora, 400/dia)
-- Cookies persistentes (6h TTL)
-- Fingerprint rotation (UA, viewport, timezone)
-- Comportamento humano simulado
-- Janelas de tempo seguras
-- Detecção e recovery automático
-
-📊 **Monitoramento:**
-- Dashboard em tempo real
-- Métricas de qualidade dos dados
-- Insights de mercado automáticos
-- Detecção de oportunidades
-
----
-
-**Desenvolvido com WAT Framework (Workflows, Agents, Tools)**
-Versão: 0.8.0 (Sistema de Scraping em Produção)
-Última atualização: 2026-02-05
+**Última atualização:** 2026-02-05
+**Branch ativa:** `feat/fase1-segmentacao`
+**Status:** 🟡 Fase 1 em desenvolvimento
+**Custo:** $0/mês (100% FREE tier)
