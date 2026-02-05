@@ -1,0 +1,142 @@
+╔═══════════════════════════════════════════════════════════════════╗
+║             API KEYS - CONFIGURAÇÃO RAG INFOIMÓVEIS               ║
+║                    (COPIE E COLE NO .env)                         ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+┌───────────────────────────────────────────────────────────────────┐
+│ 1️⃣  COHERE (Embeddings) - FREE: 1000 calls/min                   │
+└───────────────────────────────────────────────────────────────────┘
+
+🔗 URL: https://dashboard.cohere.com/
+
+📋 PASSO A PASSO:
+   1. Criar conta (Google/GitHub/Email)
+   2. Dashboard → API Keys (menu esquerdo)
+   3. Clicar em "Create Trial Key" ou "New API Key"
+   4. Copiar a key gerada (começa com algo como: abc123...)
+
+✅ Colar aqui:
+COHERE_API_KEY=
+
+
+┌───────────────────────────────────────────────────────────────────┐
+│ 2️⃣  GROQ (LLM RAG) - FREE: 30 req/min, 14.4K tokens/min          │
+└───────────────────────────────────────────────────────────────────┘
+
+🔗 URL: https://console.groq.com/
+
+📋 PASSO A PASSO:
+   1. Criar conta (Email ou Google)
+   2. Dashboard → API Keys (ícone de chave no menu)
+   3. Clicar em "Create API Key"
+   4. Copiar a key (começa com: gsk_...)
+
+✅ Colar aqui:
+GROQ_API_KEY=
+
+
+┌───────────────────────────────────────────────────────────────────┐
+│ 3️⃣  MISTRAL (LLM Backup + OCR) - FREE: 1M tokens/mês             │
+└───────────────────────────────────────────────────────────────────┘
+
+🔗 URL: https://console.mistral.ai/
+
+📋 PASSO A PASSO:
+   1. Criar conta (Email)
+   2. Workspace → API Keys
+   3. Clicar em "Create new key"
+   4. Selecionar "Free tier" (se disponível)
+   5. Copiar a key gerada
+
+✅ Colar aqui:
+MISTRAL_API_KEY=
+
+
+╔═══════════════════════════════════════════════════════════════════╗
+║                   PRÓXIMOS PASSOS APÓS OBTER KEYS                 ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+1️⃣  Abrir o arquivo .env no projeto:
+   e:\rag_infoimoeveis\.env
+
+2️⃣  Substituir as linhas:
+   COHERE_API_KEY=your_cohere_api_key
+   GROQ_API_KEY=your_groq_api_key
+   MISTRAL_API_KEY=your_mistral_api_key
+
+   Por:
+   COHERE_API_KEY=sua_key_copiada_acima
+   GROQ_API_KEY=sua_key_copiada_acima
+   MISTRAL_API_KEY=sua_key_copiada_acima
+
+3️⃣  Salvar o arquivo .env
+
+4️⃣  Executar teste:
+   python tools/test_06_embeddings.py
+
+5️⃣  Resultado esperado:
+   ✅ PASSOU: Geração de Embeddings
+   ✅ PASSOU: Inserir Imóvel + Embedding
+   ✅ PASSOU: Busca por Similaridade
+
+   Total: 3/3 testes passaram
+   🎉 Etapa 0.6 CONCLUÍDA - Pipeline de Embeddings funcionando!
+
+
+╔═══════════════════════════════════════════════════════════════════╗
+║                      IMPORTANTE - SEGURANÇA                       ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+⚠️  NUNCA commitar o arquivo .env para Git
+⚠️  As keys são pessoais e intransferíveis
+⚠️  Free tier tem limites - não abuse
+⚠️  Renovar keys se comprometerem
+
+✅ O arquivo .env já está no .gitignore
+
+
+╔═══════════════════════════════════════════════════════════════════╗
+║                    VERIFICAÇÃO DE LIMITES FREE                    ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+📊 COHERE:
+   - 1000 embeddings por minuto
+   - Monitorar em: https://dashboard.cohere.com/usage
+
+📊 GROQ:
+   - 30 requisições por minuto
+   - 14.4K tokens por minuto
+   - Monitorar em: https://console.groq.com/usage
+
+📊 MISTRAL:
+   - 1 milhão de tokens por mês
+   - Monitorar em: https://console.mistral.ai/usage
+
+
+╔═══════════════════════════════════════════════════════════════════╗
+║                      TROUBLESHOOTING                              ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+❌ Erro: "Invalid API key"
+   → Verificar se copiou a key completa (sem espaços)
+   → Regenerar key no dashboard
+
+❌ Erro: "Rate limit exceeded"
+   → Aguardar 1 minuto e tentar novamente
+   → Verificar se não está usando a mesma key em outro lugar
+
+❌ Erro: "Quota exceeded"
+   → Free tier atingiu limite mensal
+   → Aguardar reset do mês ou upgradar para paid
+
+❌ Erro: "API key não configurada"
+   → Verificar se salvou o arquivo .env
+   → Verificar se a variável está escrita corretamente
+
+
+═══════════════════════════════════════════════════════════════════
+
+✨ Após configurar as 3 keys, você estará pronto para testar
+   o pipeline completo de embeddings e RAG!
+
+═══════════════════════════════════════════════════════════════════

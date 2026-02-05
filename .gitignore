@@ -1,0 +1,43 @@
+# Ambiente
+.env
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Temporarios
+.tmp/
+*.tmp
+*.log
+
+# Credenciais
+credentials.json
+token.json
+*.pem
+*.key
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (n8n)
+node_modules/
+
+# Docker volumes locais
+postgres_data/
+n8n_data/
