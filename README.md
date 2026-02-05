@@ -10,10 +10,11 @@ Sistema RAG (Retrieval-Augmented Generation) para avaliação de imóveis em Cam
 |-------|--------|-----------|
 | 0.1-0.4 Scraping básico | ✅ Concluído | 100% |
 | 0.5 PostgreSQL + pgvector | ✅ Concluído | 100% |
-| 0.6 Pipeline Embeddings | ⚠️ Aguardando API keys | 80% |
-| 0.7 Sistema RAG | 🔜 Próximo | 0% |
-| 0.8 Scraping Seguro | 📋 Planejado | 0% |
-| 0.9 Integração n8n | 📋 Planejado | 0% |
+| 0.6 Pipeline Embeddings | ✅ Concluído | 100% |
+| 0.7 Sistema RAG | ✅ Concluído | 100% |
+| 0.8 Scraping Seguro | 🔜 Próximo | 0% |
+| 0.9 API REST | 📋 Planejado | 0% |
+| 1.0 Integração n8n | 📋 Planejado | 0% |
 
 ---
 
@@ -48,10 +49,13 @@ MISTRAL_API_KEY=sua_key_aqui
 
 ```bash
 # Teste PostgreSQL + pgvector
-python tools/test_05_postgres.py
+python tools/test_05_pgvector.py
 
-# Teste embeddings (após configurar API keys)
+# Teste embeddings
 python tools/test_06_embeddings.py
+
+# Teste sistema RAG completo
+python tools/test_07_rag_system.py
 ```
 
 ---
@@ -259,11 +263,14 @@ python tools/test_07_rag.py
 
 ## 🎯 Próximos Passos
 
-1. ⚠️ **URGENTE:** Obter API keys (Cohere, Groq, Mistral)
-2. Testar pipeline de embeddings
-3. Implementar sistema RAG completo
-4. Implementar scraper seguro (anti-bloqueio)
-5. Migrar para n8n (somente após validação)
+1. ✅ ~~Obter API keys (Cohere, Groq, Mistral)~~
+2. ✅ ~~Testar pipeline de embeddings~~
+3. ✅ ~~Implementar sistema RAG completo~~
+4. 🔜 **PRÓXIMO:** Implementar scraper de imóveis reais
+5. 📋 Criar API REST para consultas
+6. 📋 Migrar para workflow n8n (automação)
+
+Ver detalhes em [PROXIMOS_PASSOS.md](PROXIMOS_PASSOS.md)
 
 ---
 
@@ -277,5 +284,5 @@ python tools/test_07_rag.py
 ---
 
 **Desenvolvido com WAT Framework (Workflows, Agents, Tools)**
-Versão: 0.6.0 (Pipeline Embeddings em andamento)
-Última atualização: 2026-02-04
+Versão: 0.7.0 (Sistema RAG Completo Operacional)
+Última atualização: 2026-02-05

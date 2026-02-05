@@ -10,6 +10,10 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from decimal import Decimal
 import time
+from dotenv import load_dotenv
+
+# Carregar variáveis do .env
+load_dotenv()
 
 # Configuração do banco
 DB_CONFIG = {
@@ -17,7 +21,7 @@ DB_CONFIG = {
     'port': 5433,
     'database': 'infoimoveis',
     'user': 'postgres',
-    'password': 'infoimoveis2024'
+    'password': 'postgres'
 }
 
 # Cohere (tentar primário)
@@ -57,6 +61,7 @@ def generate_embedding_cohere(text, model='embed-english-v3.0'):
             embedding_types=['float']
         )
 
+        # Acesso correto: response.embeddings.float[0]
         embedding = response.embeddings.float[0]
         return embedding, None
 
@@ -64,8 +69,8 @@ def generate_embedding_cohere(text, model='embed-english-v3.0'):
         return None, f"Erro Cohere: {str(e)}"
 
 
-def generate_embedding_ollama(text, model='nomic-embed-text'):
-    """Gerar embedding usando Ollama local (FREE, 768 dimensões)"""
+def generate_embedding_ollama(text, model='qwen3-embedding:0.6b'):
+    """Gerar embedding usando Ollama local (FREE, dimensões variadas)"""
     if not OLLAMA_AVAILABLE:
         return None, "Requests não disponível"
 
@@ -83,13 +88,34 @@ def generate_embedding_ollama(text, model='nomic-embed-text'):
             data = response.json()
             embedding = data.get('embedding')
 
-            # nomic-embed-text retorna 768 dims, precisamos de 1024
-            # Padding com zeros para manter compatibilidade
-            if len(embedding) == 768:
-                embedding = embedding + [0.0] * (1024 - 768)
+            if not embedding:
+                return None, "Embedding vazio retornado"
+
+            # Se embedding tem menos de 1024 dims, fazer padding
+            if len(embedding) < 1024:
+                embedding = embedding + [0.0] * (1024 - len(embedding))
+            # Se tem mais, truncar
+            elif len(embedding) > 1024:
+                embedding = embedding[:1024]
 
             return embedding, None
         else:
+            # Tentar fallback com nomic-embed-text
+            response2 = requests.post(
+                f"{OLLAMA_HOST}/api/embeddings",
+                json={
+                    "model": "nomic-embed-text",
+                    "prompt": text
+                },
+                timeout=30
+            )
+            if response2.status_code == 200:
+                data = response2.json()
+                embedding = data.get('embedding', [])
+                if len(embedding) < 1024:
+                    embedding = embedding + [0.0] * (1024 - len(embedding))
+                return embedding, None
+
             return None, f"Erro Ollama: HTTP {response.status_code}"
 
     except requests.exceptions.ConnectionError:
@@ -110,7 +136,7 @@ def generate_embedding_with_fallback(text):
     # Fallback: Ollama local
     embedding, error = generate_embedding_ollama(text)
     if embedding:
-        return embedding, 'ollama-nomic-embed-text', None
+        return embedding, 'ollama-qwen3-embedding', None
 
     print(f"   ⚠️  Ollama falhou: {error}")
 
@@ -217,7 +243,7 @@ Descrição: {property_data['description']}
             0,
             'full',
             content,
-            str(embedding),
+            embedding,
             model,
             json.dumps({'generated_at': time.strftime('%Y-%m-%d %H:%M:%S')})
         ))
@@ -275,6 +301,11 @@ def test_similarity_search_real():
     try:
         conn = psycopg2.connect(**DB_CONFIG)
         cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Limpar dados de teste anteriores
+        cursor.execute("DELETE FROM properties WHERE source_url LIKE 'https://test.com/%'")
+        conn.commit()
+        print("✅ Dados de teste antigos removidos")
 
         # Inserir 3 imóveis com descrições diferentes
         properties = [
@@ -337,7 +368,7 @@ def test_similarity_search_real():
                 INSERT INTO property_embeddings (
                     property_id, content, embedding, embedding_model
                 ) VALUES (%s, %s, %s, %s);
-            """, (prop_id, content, str(embedding), model))
+            """, (prop_id, content, embedding, model))
 
             # Atualizar status
             cursor.execute("""
@@ -360,7 +391,10 @@ def test_similarity_search_real():
 
         print(f"✅ Embedding da query gerado com {model}")
 
-        # Buscar similares
+        # Debug: verificar property_ids
+        print(f"   Property IDs a buscar: {property_ids}")
+
+        # Buscar similares (converter UUIDs para string explicitamente)
         cursor.execute("""
             SELECT
                 p.title,
@@ -370,12 +404,27 @@ def test_similarity_search_real():
                 1 - (pe.embedding <=> %s::vector) as similarity
             FROM property_embeddings pe
             JOIN properties p ON pe.property_id = p.id
-            WHERE p.id = ANY(%s)
+            WHERE p.id = ANY(%s::uuid[])
             ORDER BY pe.embedding <=> %s::vector
             LIMIT 3;
-        """, (str(query_embedding), property_ids, str(query_embedding)))
+        """, (str(query_embedding), [str(pid) for pid in property_ids], str(query_embedding)))
 
         results = cursor.fetchall()
+
+        if not results:
+            print("\n⚠️  Nenhum resultado encontrado!")
+            print(f"   Property IDs buscados: {property_ids}")
+            # Verificar se embeddings foram inseridos
+            cursor.execute("""
+                SELECT p.id, p.title, pe.id as emb_id
+                FROM properties p
+                LEFT JOIN property_embeddings pe ON p.id = pe.property_id
+                WHERE p.id = ANY(%s::uuid[])
+            """, ([str(pid) for pid in property_ids],))
+            debug_results = cursor.fetchall()
+            for dr in debug_results:
+                print(f"   - {dr['title']}: embedding_id={dr['emb_id']}")
+            return False
 
         print("\n✅ Resultados (ordenados por relevância):")
         for i, result in enumerate(results, 1):
