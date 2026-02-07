@@ -33,7 +33,7 @@ async def human_scroll(page, duration: float = None):
         if random.random() < 0.15:
             scroll_amount = -random.randint(100, 300)
 
-        page.evaluate(f"window.scrollBy(0, {scroll_amount})")
+        await page.evaluate(f"window.scrollBy(0, {scroll_amount})")
         await asyncio.sleep(step_duration + random.uniform(-0.2, 0.3))
 
 
@@ -53,7 +53,7 @@ async def human_mouse_move(page, num_moves: int = None):
         y = random.randint(100, 800)
 
         try:
-            page.mouse.move(x, y)
+            await page.mouse.move(x, y)
             await asyncio.sleep(random.uniform(0.1, 0.5))
         except:
             pass  # Ignora erros de mouse fora da tela
@@ -111,7 +111,7 @@ async def simulate_reading(page, min_time: float = 3, max_time: float = 8):
         # Scroll pequeno
         scroll_amount = random.randint(100, 400)
         try:
-            page.evaluate(f"window.scrollBy(0, {scroll_amount})")
+            await page.evaluate(f"window.scrollBy(0, {scroll_amount})")
         except:
             pass
 
